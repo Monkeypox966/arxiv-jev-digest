@@ -448,7 +448,7 @@ def test_pdf_finds_plain_project_url_on_third_page_and_excludes_references(
     assert urls == [PROJECT]
     assert "PDF page 3 link" in text
     assert "citation.example" not in text
-    assert scanned == [1, 2, 3]
+    assert scanned == [1, 2, 3, 4]
 
 
 @pytest.mark.parametrize(("limit", "expected"), [(2, []), (3, [PROJECT])])

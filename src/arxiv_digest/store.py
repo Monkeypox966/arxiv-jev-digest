@@ -26,7 +26,7 @@ class Store:
         self.db = sqlite3.connect(directory / "digest.sqlite3")
         self.db.execute("PRAGMA busy_timeout = 10000")
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
-        if version not in {0, 1}:
+        if version not in {0, 1, 2}:
             self.db.close()
             raise ServiceError("State schema is newer than this app; upgrade before running")
         self.db.executescript("""
@@ -47,8 +47,26 @@ class Store:
                 candidates TEXT NOT NULL, selected TEXT NOT NULL,
                 status TEXT NOT NULL, created TEXT NOT NULL
             );
-            PRAGMA user_version = 1;
+            CREATE TABLE IF NOT EXISTS checkpoints (
+                recipient TEXT NOT NULL, source TEXT NOT NULL, announcement TEXT NOT NULL,
+                PRIMARY KEY(recipient, source)
+            );
+            CREATE TABLE IF NOT EXISTS metadata_retry (
+                recipient TEXT NOT NULL, profile TEXT NOT NULL, paper TEXT NOT NULL,
+                payload TEXT NOT NULL, attempts INTEGER NOT NULL, next_retry TEXT,
+                updated TEXT NOT NULL, PRIMARY KEY(recipient, profile, paper)
+            );
         """)
+        columns = {row[1] for row in self.db.execute("PRAGMA table_info(outbox)")}
+        for column in ("source", "announcement"):
+            if column not in columns:
+                self.db.execute(f"ALTER TABLE outbox ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
+        if "checkpoint_updates" not in columns:
+            self.db.execute(
+                "ALTER TABLE outbox ADD COLUMN checkpoint_updates TEXT NOT NULL DEFAULT '[]'"
+            )
+        self.db.execute("PRAGMA user_version = 2")
+        self.db.commit()
 
     def __enter__(self):
         return self
@@ -56,31 +74,152 @@ class Store:
     def __exit__(self, *_):
         self.db.close()
 
-    def cached(self, kind: str, key: str) -> dict | None:
+    def cached(
+        self, kind: str, key: str, *, max_age_hours: int | None = None, now: datetime | None = None
+    ) -> dict | None:
         row = self.db.execute(
-            "SELECT payload FROM cache WHERE kind=? AND key=?", (kind, key)
+            "SELECT payload, created FROM cache WHERE kind=? AND key=?", (kind, key)
         ).fetchone()
+        if row and max_age_hours is not None:
+            cutoff = (now or datetime.now(UTC)) - timedelta(hours=max_age_hours)
+            if datetime.fromisoformat(row[1]) <= cutoff:
+                return None
         return json.loads(row[0]) if row else None
 
-    def cache(self, kind: str, key: str, payload: dict):
+    def cache(self, kind: str, key: str, payload: dict, *, now: datetime | None = None):
         with self.db:
             self.db.execute(
                 "INSERT OR REPLACE INTO cache VALUES (?, ?, ?, ?)",
-                (kind, key, json.dumps(payload, ensure_ascii=False), datetime.now(UTC).isoformat()),
+                (
+                    kind,
+                    key,
+                    json.dumps(payload, ensure_ascii=False),
+                    (now or datetime.now(UTC)).astimezone(UTC).isoformat(),
+                ),
             )
 
-    def eligible(self, recipient: str, profile: str, paper: str) -> bool:
+    def eligible(
+        self, recipient: str, profile: str, paper: str, *, now: datetime | None = None
+    ) -> bool:
+        if self.db.execute(
+            "SELECT 1 FROM sent WHERE recipient=? AND paper=?", (recipient, paper)
+        ).fetchone():
+            return False
+        due = self.db.execute(
+            "SELECT 1 FROM metadata_retry WHERE recipient=? AND profile=? AND paper=? "
+            "AND next_retry IS NOT NULL AND next_retry<=?",
+            (recipient, profile, paper, (now or datetime.now(UTC)).astimezone(UTC).isoformat()),
+        ).fetchone()
+        if due:
+            return True
         return not self.db.execute(
-            "SELECT 1 FROM sent WHERE recipient=? AND paper=? "
-            "UNION ALL SELECT 1 FROM reviewed WHERE recipient=? AND profile=? AND paper=?",
-            (recipient, paper, recipient, profile, paper),
+            "SELECT 1 FROM reviewed WHERE recipient=? AND profile=? AND paper=?",
+            (recipient, profile, paper),
         ).fetchone()
 
-    def mark_reviewed(self, recipient: str, profile: str, ids: list[str]):
+    def checkpoint(self, recipient: str, source: str) -> str | None:
+        row = self.db.execute(
+            "SELECT announcement FROM checkpoints WHERE recipient=? AND source=?",
+            (recipient, source),
+        ).fetchone()
+        return row[0] if row else None
+
+    def reset_checkpoint(self, recipient: str, source: str):
+        with self.db:
+            self.db.execute(
+                "DELETE FROM checkpoints WHERE recipient=? AND source=?", (recipient, source)
+            )
+
+    def _advance_checkpoint(self, recipient: str, source: str, announcement: str):
+        if source and announcement:
+            self.db.execute(
+                "INSERT INTO checkpoints VALUES (?, ?, ?) "
+                "ON CONFLICT(recipient, source) DO UPDATE SET "
+                "announcement=max(checkpoints.announcement, excluded.announcement)",
+                (recipient, source, announcement),
+            )
+
+    def mark_reviewed(
+        self,
+        recipient: str,
+        profile: str,
+        ids: list[str],
+        *,
+        source="",
+        announcement="",
+        checkpoint_updates: list[tuple[str, str]] | None = None,
+    ):
         with self.db:
             self.db.executemany(
                 "INSERT OR IGNORE INTO reviewed VALUES (?, ?, ?)",
                 [(recipient, profile, paper) for paper in ids],
+            )
+            self._advance_checkpoint(recipient, source, announcement)
+            for source_key, date in checkpoint_updates or []:
+                self._advance_checkpoint(recipient, source_key, date)
+
+    def queue_metadata_retry(
+        self,
+        recipient: str,
+        profile: str,
+        paper: dict,
+        *,
+        delay_hours: int,
+        max_attempts: int,
+        now: datetime,
+    ):
+        if self.db.execute(
+            "SELECT 1 FROM sent WHERE recipient=? AND paper=?", (recipient, paper["id"])
+        ).fetchone():
+            return
+        row = self.db.execute(
+            "SELECT attempts, next_retry FROM metadata_retry "
+            "WHERE recipient=? AND profile=? AND paper=?",
+            (recipient, profile, paper["id"]),
+        ).fetchone()
+        timestamp = now.astimezone(UTC).isoformat()
+        if row and (row[1] is None or row[1] > timestamp):
+            # Replaying a failed delivery with the same cached metadata is not
+            # another extraction attempt and must not consume the retry budget.
+            return
+        attempts = row[0] + 1 if row else 1
+        next_retry = (
+            (now.astimezone(UTC) + timedelta(hours=delay_hours)).isoformat()
+            if attempts < max_attempts
+            else None
+        )
+        with self.db:
+            self.db.execute(
+                "INSERT OR REPLACE INTO metadata_retry VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    recipient,
+                    profile,
+                    paper["id"],
+                    json.dumps(paper, ensure_ascii=False),
+                    attempts,
+                    next_retry,
+                    now.astimezone(UTC).isoformat(),
+                ),
+            )
+
+    def due_metadata(
+        self, recipient: str, profile: str, *, now: datetime, limit: int
+    ) -> list[dict]:
+        rows = self.db.execute(
+            "SELECT payload FROM metadata_retry r WHERE recipient=? AND profile=? "
+            "AND next_retry IS NOT NULL AND next_retry<=? "
+            "AND NOT EXISTS (SELECT 1 FROM sent s "
+            "WHERE s.recipient=r.recipient AND s.paper=r.paper) "
+            "ORDER BY next_retry, paper LIMIT ?",
+            (recipient, profile, now.astimezone(UTC).isoformat(), limit),
+        ).fetchall()
+        return [json.loads(row[0]) for row in rows]
+
+    def clear_metadata_retry(self, recipient: str, profile: str, paper: str):
+        with self.db:
+            self.db.execute(
+                "DELETE FROM metadata_retry WHERE recipient=? AND profile=? AND paper=?",
+                (recipient, profile, paper),
             )
 
     def pending(self, recipient: str | None = None) -> list[dict]:
@@ -91,14 +230,25 @@ class Store:
         return [dict(zip(("id", "recipient_hash", "created"), row, strict=True)) for row in rows]
 
     def prepare(
-        self, recipient: str, profile: str, candidates: list[str], selected: list[str]
+        self,
+        recipient: str,
+        profile: str,
+        candidates: list[str],
+        selected: list[str],
+        *,
+        source="",
+        announcement="",
+        checkpoint_updates: list[tuple[str, str]] | None = None,
     ) -> str:
         if self.pending(recipient):
             raise ServiceError("Unresolved email attempt; use pending and resolve commands")
         delivery_id = uuid.uuid4().hex
         with self.db:
             self.db.execute(
-                "INSERT INTO outbox VALUES (?, ?, ?, ?, ?, 'pending', ?)",
+                "INSERT INTO outbox "
+                "(id, recipient, profile, candidates, selected, status, created, "
+                "source, announcement, checkpoint_updates) "
+                "VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)",
                 (
                     delivery_id,
                     recipient,
@@ -106,18 +256,23 @@ class Store:
                     json.dumps(candidates),
                     json.dumps(selected),
                     datetime.now(UTC).isoformat(),
+                    source,
+                    announcement,
+                    json.dumps(checkpoint_updates or []),
                 ),
             )
         return delivery_id
 
     def resolve(self, delivery_id: str, outcome: str):
         row = self.db.execute(
-            "SELECT recipient, profile, candidates, selected, status FROM outbox WHERE id=?",
+            "SELECT recipient, profile, candidates, selected, status, source, announcement, "
+            "checkpoint_updates "
+            "FROM outbox WHERE id=?",
             (delivery_id,),
         ).fetchone()
         if not row or row[4] != "pending":
             raise ServiceError("No pending delivery with that ID")
-        recipient, profile, candidates, selected, _ = row
+        recipient, profile, candidates, selected, _, source, announcement, updates = row
         with self.db:
             if outcome == "sent":
                 self.db.executemany(
@@ -128,6 +283,13 @@ class Store:
                     "INSERT OR IGNORE INTO sent VALUES (?, ?)",
                     [(recipient, p) for p in json.loads(selected)],
                 )
+                self.db.executemany(
+                    "DELETE FROM metadata_retry WHERE recipient=? AND paper=?",
+                    [(recipient, p) for p in json.loads(selected)],
+                )
+                self._advance_checkpoint(recipient, source, announcement)
+                for source_key, date in json.loads(updates):
+                    self._advance_checkpoint(recipient, source_key, date)
                 self.db.execute("UPDATE outbox SET status='sent' WHERE id=?", (delivery_id,))
             elif outcome == "retry":
                 self.db.execute("DELETE FROM outbox WHERE id=?", (delivery_id,))
@@ -139,3 +301,4 @@ class Store:
         with self.db:
             self.db.execute("DELETE FROM cache WHERE created < ?", (cutoff,))
             self.db.execute("DELETE FROM outbox WHERE status='sent' AND created < ?", (cutoff,))
+            self.db.execute("DELETE FROM metadata_retry WHERE updated < ?", (cutoff,))

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
 from typing import Literal
 
@@ -15,6 +16,17 @@ class Paper:
     categories: list[str]
     published: str
     announced: str = ""
+    version: str = ""
+    updated: str = ""
+
+    @property
+    def versioned_id(self) -> str:
+        if not self.version:
+            return self.id
+        match = re.fullmatch(r"v?([1-9]\d*)", self.version)
+        if not match:
+            raise ValueError("Invalid arXiv paper version")
+        return f"{self.id}v{match[1]}"
 
     @property
     def url(self) -> str:
@@ -23,6 +35,18 @@ class Paper:
     @property
     def pdf_url(self) -> str:
         return f"https://arxiv.org/pdf/{self.id}"
+
+    @property
+    def metadata_url(self) -> str:
+        return f"https://arxiv.org/abs/{self.versioned_id}"
+
+    @property
+    def metadata_pdf_url(self) -> str:
+        return f"https://arxiv.org/pdf/{self.versioned_id}"
+
+    @property
+    def metadata_html_url(self) -> str:
+        return f"https://arxiv.org/html/{self.versioned_id}"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -70,10 +94,45 @@ class PaperDetails(BaseModel):
     project_url: str | None = None
     project_source: str | None = None
     project_label: str = "项目网站"
+    project_status: Literal["unknown", "found", "not_found", "unavailable"] = "unknown"
+    affiliation_status: Literal["unknown", "found", "partial", "not_found", "unavailable"] = (
+        "unknown"
+    )
     affiliations: list[Affiliation] = Field(default_factory=list)
     sources: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
     reviewed_on: str = ""
+    reviewed_version: str = ""
+    failed_sources: list[str] = Field(default_factory=list)
+
+    def completeness(self, paper: Paper) -> dict:
+        authors = set(paper.authors)
+        covered = {
+            author
+            for affiliation in self.affiliations
+            if affiliation.source or self.sources
+            for author in affiliation.authors
+            if author in authors
+        }
+        total = len(authors)
+        project_found = bool(self.project_url and (self.project_source or self.sources))
+        return {
+            "project_found": project_found,
+            "project_status": self.project_status,
+            "affiliation_status": self.affiliation_status,
+            "covered_authors": len(covered),
+            "total_authors": total,
+            "affiliation_coverage": len(covered) / total if total else 0.0,
+            "missing_authors": [author for author in paper.authors if author not in covered],
+        }
+
+    def needs_refresh(self, paper: Paper) -> bool:
+        completeness = self.completeness(paper)
+        return (
+            not completeness["project_found"]
+            or completeness["affiliation_coverage"] < 1
+            or not completeness["total_authors"]
+        )
 
     @field_validator("project_url", "project_source")
     @classmethod
@@ -92,7 +151,7 @@ class PaperDetails(BaseModel):
             raise ValueError("Expected an HTTP(S) URL without credentials")
         return value
 
-    @field_validator("sources")
+    @field_validator("sources", "failed_sources")
     @classmethod
     def safe_sources(cls, values):
         return [cls.safe_project_url(value) for value in values]

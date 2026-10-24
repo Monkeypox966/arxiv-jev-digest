@@ -27,6 +27,8 @@ def passes_institution_filter(ranking: Ranking, settings: RankingSettings) -> bo
         return True
     if ranking.status == "unknown":
         return settings.unknown_policy == "keep"
+    if ranking.status == "unlisted":
+        return settings.unlisted_policy == "keep"
     return ranking.institution_score >= settings.min_institution_score
 
 

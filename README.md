@@ -13,10 +13,12 @@ arXiv → 分页获取候选 → 历史去重 → Jev 逐篇判断各项兴趣
 ## 功能
 
 - **先筛选再总结**：Jev 阅读每篇候选的标题、原始摘要和分类，只有入选论文生成摘要；达标候选的机构提取可能另外调用 DeepSeek。没有关键词预筛。
-- **机构偏好与过滤**：先过相关性门槛，再按已核实作者机构过滤和排序，默认相关性 80% + 机构 20%，机构低于 60 分移除；名单、权重、门槛均可修改，未知机构单独处理。详见[排序规则](docs/ranking.md)。
+- **机构偏好与过滤**：先过相关性门槛，再按作者机构排序，默认相关性 80% + 机构 20%；已评分机构低于 60 分移除。未收录与未核实分开配置，默认保留并标注，避免名单漏收导致误删。详见[排序规则](docs/ranking.md)。
 - **可解释的筛选**：每项兴趣单独返回 Noul 概率；权重、合成方式和阈值由代码决定，报告保留实际模型版本和各项分数。
 - **明确公告批次**：默认读取分类 recent 页的最新一批，再用 API 获取全部元数据，区分公告日期与提交日期；可切换滚动 API 窗口或 RSS。
 - **可恢复运行**：模型结果缓存；发送历史按收件人独立保存；成功才标记完成。SMTP 接收结果不确定时进入人工确认流程。
+- **漏跑补抓与补查**：每个分类、收件人有独立公告检查点；在可验证的 recent 历史内补抓。缺机构的未发送论文可有限重试，缺失资料不长期缓存。
+- **预算与健康报告**：所有模型 HTTP 尝试（含重试）计入预算，机构提取和摘要分别统计；失败也保存 `health.json` / `usage.json`。可选向原收件人发送失败通知，预览和元数据诊断永不发邮件。
 - **结构化摘要**：翻译标题、一句话概述、研究问题、核心方法、主要结果、阅读提醒。明确只依据原始摘要，不宣称读过全文。
 - **作者与项目来源**：读取 arXiv 首页摘要 / Comments、正文 HTML、PDF 和已确认项目页，按字段补缺；检测 HTML 机构标记丢失，必要时补查 PDF。项目和机构各自保留来源，项目页只补缺失作者的机构。详见[覆盖范围与验证](docs/enrichment.md)。
 - **安全配置**：密钥和邮箱地址通过环境变量 / GitHub Secrets 设置；邮件内容进行 HTML 转义；无 PR 密钥调用。
@@ -83,6 +85,8 @@ OpenRouter 的 Jev 使用 decisions 接口，不能使用普通 chat/completions
 2. 在工作流 Artifacts 下载报告，打开 `digest.html` 检查筛选和摘要。
 3. 再次手动运行，选择 `send`，验证实际收信。
 
+单独核查论文链接与机构可选择 `inspect`，在 `paper_ids` 填 1–5 个空格分隔的 arXiv ID，例如 `2605.07315 2508.08241 2606.03985`。这会真实调用元数据提取模型，生成 `metadata.json`，不调用 JEV 筛选，也不发送邮件。
+
 之后每天自动执行发送模式。默认每天北京时间 **09:30** 启动，处理完成后发送邮件。修改 [`.github/workflows/daily.yml`](.github/workflows/daily.yml) 的 `cron` 可调整启动时间，表达式使用 UTC，当前的 `30 1 * * *` 对应北京时间 09:30。配置中的 `timezone` 只控制报告显示，不会改变 Actions 调度。
 
 GitHub 调度可能延迟；公共仓库长期没有活动也可能停用定时工作流。详见 [GitHub schedule 文档](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)。
@@ -105,6 +109,8 @@ uv run arxiv-digest demo
 uv run arxiv-digest check --credentials
 uv run arxiv-digest run --dry-run
 uv run arxiv-digest run
+uv run arxiv-digest inspect --refresh 2508.08241 2606.03985
+uv run arxiv-digest status
 ```
 
 指定其他配置文件：
@@ -119,17 +125,21 @@ uv run arxiv-digest --config profiles/robotics.toml check
 
 | 区块 | 关键配置 | 行为 |
 | --- | --- | --- |
-| `arxiv` | `categories`, `source`, `lookback_days` | 默认 latest 为最新公告批次；api 为滚动提交时间窗口；rss 为最近公告流 |
+| `arxiv` | `categories`, `source`, `lookback_days`, `catch_up` | 默认 latest 首次取最新批，后续在 recent 覆盖内精确补抓；api 为滚动提交窗口；rss 为最近公告流 |
 | `arxiv` | `page_size`, `max_candidates` | 完整分页；超过候选上限直接失败，避免悄悄漏掉论文 |
 | `jev` | `backend`, `endpoint`, `model` | TypeSafe 默认固定 `jev-1.14.0`；可切换 OpenRouter |
 | `selection` | `top_k`, `min_score` | 默认最多 10 篇；满足阈值不足时不强行补齐 |
 | `selection` | `combine` | 默认 `max(weight × p)`；或 `1 − ∏(1 − weight × p)` |
 | `selection` | `exclude_threshold` | 任一排除项达到阈值就剔除 |
+| `ranking` | `institution_weight`, `min_institution_score`, `unlisted_policy` | 已评分机构按门槛过滤；未收录默认保留，名单不是客观质量评审 |
 | `deepseek` | `base_url`, `model`, `language` | 默认 DeepSeek 官方 `deepseek-flash`，支持兼容接口 |
 | `deepseek` | `disable_thinking` | 默认发送 `thinking: {type: disabled}`；服务不支持该字段时设为 false |
 | `email` | `recipients`, `send_empty` | EMAIL_TO 覆盖收件人；默认无匹配不发空邮件 |
 | `retention` | `cache_days` | 缓存保留 30 天；已发送和已处理历史持续保留 |
-| `enrichment` | `enabled`, `timeout_seconds`, `max_pdf_mb` | 获取项目页与机构，HTML 不可用时检查 PDF 前两页；限制文件大小和请求超时 |
+| `enrichment` | `incomplete_cache_hours`, `retry_attempts` | 不完整元数据默认缓存 24 小时；未发送且机构不完整的候选最多查找 3 次（含首次） |
+| `enrichment` | `max_pdf_pages`, `follow_project_page` | 有界 PDF 正文与可识别附录扫描，项目页仅补缺；按论文版本保存来源 |
+| `budget` | `max_jev_calls`, `max_deepseek_calls`, `max_input_tokens`, `max_output_tokens` | 每轮硬调用上限及 token 预留/实耗结算，耗尽即阻断新调用与发信 |
+| `notifications` | `email_on_failure` | 默认配置开启发送模式失败通知；SMTP 自身故障时仍需查看 GitHub 失败记录 |
 | 根配置 | `compact_summaries` | 默认展示一段贡献摘要；false 展示完整六字段摘要，JSON 始终保留所有字段 |
 
 权重合成后的分数用于排序，尤其 noisy-OR 不应解释为经校准的整体概率；相关性也不代表论文质量。
@@ -155,13 +165,15 @@ security = "ssl"
 
 ## 抓取、历史与重跑
 
-- `source = "latest"` 只取 recent 页第一个公告日期对应的完整批次，包括该分类的交叉列入论文，不把后面的日期拼进来。周末或无新公告时可以沿用最新批次，但已发送历史会阻止重复发信。超过列表 / 候选容量时显式失败。此模式不补抓停机期间的所有旧批次；需要补抓时临时改用 api 模式。
+- `source = "latest"` 首次只取最新完整公告批次，包括交叉列入论文。开启 `catch_up` 后按每个收件人、分类的成功检查点补抓 recent 内后续公告；周末沿用最新批但不重发。超过 recent 可核实历史或 `catch_up_max_days` 会明确失败，不用提交日期冒充公告日期。显式恢复见[操作手册](docs/operations.md)。
 - arXiv 新提交与公告时间不同，API 模式查询的是**提交时间窗口**，不是“过去 24 小时公布”的精确集合。默认窗口是部署第一天的候选范围，首次可能需要筛选几千篇；后续只处理新增或尚未完成的论文。
 - 首次运行按整个窗口统一排序选 Top K。一次成功处理后，同批未入选论文也标记为已处理，下一天聚焦新增论文。更改兴趣、模型或筛选参数会生成新配置指纹，对窗口内未发送过的论文重新筛选。
 - arXiv ID 去掉版本号，跨分类重复与后续版本不会重复推送。没有“新版更新提醒”。`include_cross_lists = false` 时只保留主分类匹配的论文。
 - 成功的模型响应立即缓存。筛选失败或摘要不完整会使运行失败，**不会发送缺少摘要的半成品日报**；重跑可复用成功结果。
 - 每位收件人有独立的已发送和已处理记录。多人接收时分别发送，不暴露其他收件人。增加收件人后，新收件人可以获得窗口内的最佳论文。
 - `--dry-run` 只写缓存和报告，不改变发送 / 已处理状态。没有配置收件人时使用独立预览身份。
+- `inspect` 仅核查元数据、更新缓存并写诊断报告，不改变已处理、发送和公告检查点。
+- 缺少机构、未入选且未发送的候选可进入延迟补查队列；每轮最多 20 篇。尚未到期的重复运行不消耗重试次数；已发送论文永不因此重发。只缺项目链接不会把未入选论文持续补发。
 - 每个真实报告保存在 `output/<日期-运行标识>/`，包含 HTML、纯文本、JSON；多收件人报告使用编号子目录。JSON 含入选论文、Jev 分数及摘要，不含邮箱地址和密钥。
 
 机构与项目链接的人工核查记录位于 `src/arxiv_digest/data/verified_details.json`，记录核查日期和来源。自动提取只接受文档中实际出现的机构名称和候选链接，并在报告中标明自动提取状态；复杂脚注仍可能解析不完整，请以原文署名为准。项目链接为空表示未能找到或核实，不代表作者一定没有发布项目。内置的 2026-10-23 cs.RO 八篇记录已逐篇核对 PDF 首页，项目页另行核查。
@@ -178,7 +190,7 @@ security = "ssl"
 
 ### 邮件接收结果不确定时
 
-SMTP 无法与本地数据库原子提交；即使服务器接收了邮件，客户端也可能没收到确认。本项目会在发信前写入 `pending`，确认成功后再标记 `sent`。出现待确认记录时，后续自动发送停止，防止自动重发。
+SMTP 无法与数据库原子提交；即使服务器接收了邮件，客户端也可能没收到确认。GitHub 发送模式会先写入 `pending`，再将数据库保存到远端状态分支，成功后才允许 SMTP DATA。确认发送后原子标记 `sent` 并推进公告检查点，最后再次保存远端状态。出现待确认记录时，后续自动发送停止。本地如需同等远端保护，可在可信仓库与 GH_TOKEN 环境使用 `run --persist-outbox`。
 
 本地查看、确认：
 

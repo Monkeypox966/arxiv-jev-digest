@@ -19,12 +19,14 @@ Only the selected union across recipients is summarized by DeepSeek. Summaries m
 ## Delivery state machine
 
 ```text
-SMTP login → prepare pending → SMTP DATA accepted → sent + reviewed
+SMTP login → prepare pending → persist pending remotely → SMTP DATA accepted → sent + reviewed + checkpoints
                        │
                        └─ interruption / failure → keep pending → manual sent or retry
 ```
 
-Each recipient gets a separate message, transaction, and history. If a later recipient fails, earlier accepted deliveries stay complete. SMTP acceptance is not final inbox delivery. A local transaction cannot be atomic with a remote SMTP server, so unresolved attempts block automatic resends.
+Each recipient gets a separate message, transaction, and history. If a later recipient fails, earlier accepted deliveries stay complete. SMTP acceptance is not final inbox delivery. The trusted Actions state helper saves the pending outbox before SMTP DATA so runner loss does not erase the guard. Source checkpoints are per category/recipient and advance atomically with acknowledged delivery or a successful no-match review. Preview and uncertain attempts never advance them. A database transaction cannot be atomic with SMTP, so unresolved attempts block resends.
+
+Schema v2 migrates v1 state in place and retains pending/sent history. Missing affiliations on unsent candidates can be queued for bounded delayed retries, independently of the latest batch. Incomplete metadata uses a short TTL; neither cached replays nor repeated SMTP login failures consume another future retry. `usage.py` reserves call/token budgets under a lock for every real HTTP attempt, reconciles provider usage, and fails closed before sending on exhaustion. `health.json` and `usage.json` are written even on processing failures. Diagnostics use the same enrichment/budget stack without sending or advancing review history.
 
 ## GitHub Actions
 

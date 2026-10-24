@@ -19,7 +19,8 @@
           <strong style="font-size:24px;color:#17654b;">{{ picks|length }}</strong> 篇精选
           <span style="color:#7b8b83;"> &nbsp; / &nbsp; {{ stats.get('fetched', 0) }} 篇候选</span>
           <p style="font-size:13px;color:#6a7e73;margin:8px 0 0;">Jev 按研究兴趣筛选 · DeepSeek 依据原始摘要总结</p>
-          {% if ranking_enabled %}<p style="font-size:13px;color:#6a7e73;margin:8px 0 0;">排序：相关性 {{ '%.0f'|format((1 - institution_weight) * 100) }}% + 机构偏好 {{ '%.0f'|format(institution_weight * 100) }}% · 机构最低分 {{ '%.0f'|format(min_institution_score * 100) }}/100<br>机构过滤 {{ stats.get('institution_filtered', 0) }} 篇 · 机构待核实 {{ stats.get('institution_unknown', 0) }} 篇</p>{% endif %}
+          {% if ranking_enabled %}<p style="font-size:13px;color:#6a7e73;margin:8px 0 0;">排序：相关性 {{ '%.0f'|format((1 - institution_weight) * 100) }}% + 机构偏好 {{ '%.0f'|format(institution_weight * 100) }}% · 已评分机构最低分 {{ '%.0f'|format(min_institution_score * 100) }}/100<br>机构过滤 {{ stats.get('institution_filtered', 0) }} 篇 · 机构待核实 {{ stats.get('institution_unknown', 0) }} 篇 · 未收录 {{ stats.get('institution_unlisted', 0) }} 篇</p>{% endif %}
+          {% if stats.get('metadata_retries') %}<p style="font-size:13px;color:#6a7e73;">本次含 {{ stats['metadata_retries'] }} 篇此前未发送论文的机构补查。</p>{% endif %}
           {% if stats.get('announcement_dates') %}<p style="font-size:13px;color:#6a7e73;margin:8px 0 0;">最新公告批次：{{ stats['announcement_dates']|join(' / ') }} · 本次不以提交日期替代公告日期</p>{% endif %}
           {% if demo %}<p style="padding:10px 12px;background:#fff3d8;color:#80500c;font-size:13px;">离线演示：论文、分数与摘要均为虚构示例，未调用模型，未发送邮件。</p>{% endif %}
         </td></tr>
@@ -54,6 +55,9 @@
           {% if pick.details %}
           <div style="font-size:12px;color:#5b7063;margin:16px 0;">
             <strong>作者与机构</strong><br>
+            {% set completeness = pick.details.completeness(pick.paper) %}
+            已核实 {{ completeness.covered_authors }}/{{ completeness.total_authors }} 位作者{% if pick.paper.version %} · {{ pick.paper.version }}{% endif %}<br>
+            项目链接：{{ status_labels.get(pick.details.project_status, '待核实') }}<br>
             {% for affiliation in pick.details.affiliations %}
             {{ affiliation.institution }}：{{ affiliation.authors|join(', ') }}{% if affiliation.source %} <a href="{{ affiliation.source }}" style="color:#46735a;">来源</a>{% endif %}<br>
             {% else %}未能核实机构，见论文原文。<br>{% endfor %}
@@ -64,8 +68,8 @@
           </div>
           {% endif %}
           {% if not demo %}
-          <a href="{{ pick.paper.url }}" style="display:inline-block;background:#236347;color:#fff;text-decoration:none;padding:7px 16px;border-radius:5px;font-size:13px;">阅读论文 ↗</a>
-          <a href="{{ pick.paper.pdf_url }}" style="display:inline-block;color:#236347;text-decoration:none;padding:7px 16px;font-size:13px;">PDF ↗</a>
+          <a href="{{ pick.paper.metadata_url }}" style="display:inline-block;background:#236347;color:#fff;text-decoration:none;padding:7px 16px;border-radius:5px;font-size:13px;">阅读论文 ↗</a>
+          <a href="{{ pick.paper.metadata_pdf_url }}" style="display:inline-block;color:#236347;text-decoration:none;padding:7px 16px;font-size:13px;">PDF ↗</a>
           {% if pick.details %}
             {% if pick.details.project_url %}<a href="{{ pick.details.project_url }}" style="display:inline-block;color:#236347;text-decoration:none;padding:7px 16px;font-size:13px;">{{ pick.details.project_label }} ↗</a>
             {% else %}<span style="font-size:12px;color:#7b877e;">未能确认项目链接，详见来源与说明</span>{% endif %}

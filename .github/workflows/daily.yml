@@ -9,11 +9,20 @@ on:
       mode:
         description: Preview uses real APIs but sends no email; send enables delivery.
         type: choice
-        options: [preview, send, resolve_sent, resolve_retry]
+        options: [preview, send, inspect, recover_preview, recover_send, reset_checkpoints, resolve_sent, resolve_retry]
         default: preview
       delivery_id:
         description: Only for resolve modes; check the recipient inbox first.
         type: string
+        required: false
+      paper_ids:
+        description: Only for inspect; 1-5 arXiv IDs separated by spaces, never sends email.
+        type: string
+        required: false
+      recovery_days:
+        description: Only for recover modes; explicit submission window, 1-31 days.
+        type: number
+        default: 7
         required: false
 
 permissions:
@@ -46,9 +55,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: uv run --locked --no-dev python .github/scripts/state.py load
       - name: Run digest or resolve delivery
+        id: process
         env:
           RUN_MODE: ${{ inputs.mode || 'send' }}
           DELIVERY_ID: ${{ inputs.delivery_id }}
+          PAPER_IDS: ${{ inputs.paper_ids }}
+          RECOVERY_DAYS: ${{ inputs.recovery_days || 7 }}
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
@@ -56,11 +68,19 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           case "$RUN_MODE" in
             preview) uv run --locked --no-dev arxiv-digest run --dry-run ;;
-            send) uv run --locked --no-dev arxiv-digest run ;;
+            send) uv run --locked --no-dev arxiv-digest run --persist-outbox ;;
+            recover_preview) uv run --locked --no-dev arxiv-digest run --dry-run --recovery-days "$RECOVERY_DAYS" ;;
+            recover_send) uv run --locked --no-dev arxiv-digest run --persist-outbox --recovery-days "$RECOVERY_DAYS" ;;
+            reset_checkpoints) uv run --locked --no-dev arxiv-digest reset-checkpoints ;;
+            inspect)
+              read -r -a PAPER_ID_ARGS <<< "$PAPER_IDS"
+              uv run --locked --no-dev arxiv-digest inspect --refresh "${PAPER_ID_ARGS[@]}"
+              ;;
             resolve_sent) uv run --locked --no-dev arxiv-digest resolve "$DELIVERY_ID" --outcome sent ;;
             resolve_retry) uv run --locked --no-dev arxiv-digest resolve "$DELIVERY_ID" --outcome retry ;;
             *) exit 2 ;;
@@ -81,3 +101,15 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
+      - name: Publish run health and API usage
+        if: ${{ always() && steps.restore.outcome == 'success' }}
+        run: uv run --locked --no-dev arxiv-digest status
+      - name: Notify configured recipients after a send-mode failure
+        if: ${{ failure() && (github.event_name == 'schedule' || inputs.mode == 'send' || inputs.mode == 'recover_send') }}
+        env:
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: uv run --locked --no-dev arxiv-digest notify-failure --run-url "$RUN_URL"

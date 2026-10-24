@@ -12,13 +12,19 @@ from urllib.parse import urljoin, urlsplit
 import httpx
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
+from pypdf.errors import PyPdfError
 
 from .clients import DeepSeekClient, fingerprint
 from .config import Config
-from .http import RateLimiter
+from .http import RateLimiter, ServiceError
 from .models import Paper, PaperDetails
 
 LOG = logging.getLogger(__name__)
+SOURCE_ERRORS = (httpx.HTTPError, OSError, ValueError, ServiceError, PyPdfError)
+APPENDIX_HEADING = re.compile(
+    r"(?im)^[ \t]*(?:appendi(?:x|ces)(?:[ \t]+[A-Z](?:[.:][ \t]*[^\n]{0,120})?)?"
+    r"|(?:supplementary|supplemental)[ \t]+(?:material|information))[ \t]*$"
+)
 
 
 def normalize_text(value: str) -> str:
@@ -87,12 +93,22 @@ def checked_details(raw: str, paper: Paper, document: str, candidates: list[str]
             raise ValueError("Affiliation refers to an unknown author")
         if normalize_text(affiliation.institution) not in source:
             raise ValueError("Institution must be quoted verbatim from the source")
+        compact_source = re.sub(r"[\W_]+", "", source)
+        if any(
+            re.sub(r"[\W_]+", "", normalize_text(author)) not in compact_source
+            for author in affiliation.authors
+        ):
+            raise ValueError("Mapped author must be present in the supplied source")
     # Source URLs are supplied by the fetcher, never trusted from generated text.
     details.sources = []
     details.project_source = None
     for affiliation in details.affiliations:
         affiliation.source = None
     details.reviewed_on = ""
+    details.reviewed_version = ""
+    details.project_status = "unknown"
+    details.affiliation_status = "unknown"
+    details.failed_sources = []
     details.project_label = "项目网站 / 代码"
     return details
 
@@ -108,6 +124,8 @@ def element_evidence(main) -> tuple[str, list[str]]:
     for url in text_urls(text):
         if url not in urls:
             urls.append(url)
+    if not text and not urls:
+        raise ValueError("Source contains no readable metadata text")
     # Link context survives the main-text budget, including projects near the end.
     document = text[:14000] + "\nLink contexts:\n" + "\n".join(contexts[:30])
     return document, urls[:30]
@@ -193,6 +211,36 @@ def project_identity(paper: Paper, text: str) -> bool:
     )
 
 
+def classify_details(
+    details: PaperDetails, paper: Paper, failures: list[str], *, checked: bool
+) -> PaperDetails:
+    """Assign state from observed results; model output cannot certify itself."""
+    details.failed_sources = list(dict.fromkeys(failures))
+    completeness = details.completeness(paper)
+    details.project_status = (
+        "found"
+        if completeness["project_found"]
+        else "unavailable"
+        if failures
+        else "not_found"
+        if checked
+        else "unknown"
+    )
+    coverage = completeness["affiliation_coverage"]
+    details.affiliation_status = (
+        "found"
+        if completeness["total_authors"] and coverage == 1
+        else "partial"
+        if coverage > 0
+        else "unavailable"
+        if failures
+        else "not_found"
+        if checked
+        else "unknown"
+    )
+    return details
+
+
 class Enricher:
     def __init__(self, config: Config, client: httpx.Client, deepseek: DeepSeekClient):
         self.config = config
@@ -205,14 +253,18 @@ class Enricher:
     def key(self, paper: Paper) -> str:
         return fingerprint(
             [
-                "details-v2-multisource",
+                "details-v3-state-and-revision",
                 paper.id,
                 paper.title,
                 paper.authors,
                 paper.abstract,
+                paper.version,
+                paper.updated,
                 self.config.enrichment.model_dump(),
                 self.config.deepseek.base_url,
                 self.config.deepseek.model,
+                self.config.deepseek.max_tokens,
+                self.config.deepseek.disable_thinking,
                 self.verified.get(paper.id),
             ]
         )
@@ -249,7 +301,7 @@ class Enricher:
         data = bytearray()
         with self.client.stream(
             "GET",
-            paper.pdf_url,
+            paper.metadata_pdf_url,
             timeout=self.config.enrichment.timeout_seconds,
             follow_redirects=True,
         ) as response:
@@ -262,14 +314,32 @@ class Enricher:
             raise ValueError("Expected a PDF")
         reader = PdfReader(io.BytesIO(data))
         header, contexts, urls = [], [], []
+        in_references = False
+        has_readable_text = False
         for index, page in enumerate(reader.pages[: self.config.enrichment.max_pdf_pages], 1):
             page_text = (page.extract_text() or "")[:20000]
-            # Exclude reference lists; authors' project links must not be taken
-            # from citations. Appendix links after a reference section may be missed.
+            has_readable_text = has_readable_text or bool(page_text.strip())
+            trimmed = False
+            if in_references:
+                appendix = APPENDIX_HEADING.search(page_text)
+                if not appendix:
+                    continue
+                page_text = page_text[appendix.start() :]
+                in_references = False
+                trimmed = True
+            # Skip the reference list, but allow a clearly marked appendix to
+            # resume scanning within the same bounded page budget.
             before_references = re.split(
                 r"(?im)^\s*(?:\d+[.\s]+)?(?:references|bibliography)\s*$", page_text, maxsplit=1
             )
             page_text = before_references[0]
+            if len(before_references) > 1:
+                in_references = True
+                trimmed = True
+                appendix = APPENDIX_HEADING.search(before_references[1])
+                if appendix:
+                    page_text += "\n" + before_references[1][appendix.start() :]
+                    in_references = False
             if index <= 2:
                 header.append(f"PDF page {index}:\n" + page_text)
             links = text_urls(page_text)
@@ -280,7 +350,7 @@ class Enricher:
                     if candidate_url(url):
                         # Annotation coordinates need not align with extracted
                         # text. On a reference page only keep URLs in body text.
-                        if len(before_references) == 1 or url in page_text:
+                        if not trimmed or url in page_text:
                             links.append(url)
             for url in links:
                 if url not in urls:
@@ -292,8 +362,10 @@ class Enricher:
                         else page_text[:1200]
                     )
                     contexts.append(f"PDF page {index} link {url}:\n{excerpt}")
-            if len(before_references) > 1:
-                break
+        if not has_readable_text:
+            raise ValueError(
+                "PDF contains no extractable text; OCR or manual verification is required"
+            )
         text = "\n".join(header)[:18000] + "\nLink contexts:\n" + "\n".join(contexts[:30])
         return text, urls[:30]
 
@@ -329,28 +401,42 @@ class Enricher:
         return details
 
     def enrich(self, paper: Paper) -> PaperDetails:
+        result = PaperDetails()
+        curated = False
         if paper.id in self.verified:
             details = PaperDetails.model_validate(self.verified[paper.id])
             mapped = {
                 author for affiliation in details.affiliations for author in affiliation.authors
             }
-            if mapped.issubset(set(paper.authors)):
-                return details
-        result = PaperDetails()
+            version_matches = not paper.version or (
+                bool(details.reviewed_version)
+                and details.reviewed_version.lstrip("v") == paper.version.lstrip("v")
+            )
+            if mapped.issubset(set(paper.authors)) and version_matches:
+                result = details
+                curated = True
+                if not result.needs_refresh(paper):
+                    return classify_details(result, paper, [], checked=True)
         failures = []
+        checked = bool(result.sources)
         check_pdf_mapping = False
         for url, parse in (
-            (paper.url, abs_evidence),
-            (f"https://arxiv.org/html/{paper.id}", html_evidence),
+            (paper.metadata_url, abs_evidence),
+            (paper.metadata_html_url, html_evidence),
         ):
             try:
                 html, source = self.fetch_html(url)
                 text, urls = parse(html)
+                checked = True
                 if parse is html_evidence:
                     check_pdf_mapping = html_mapping_unclear(html)
                 if urls or parse is html_evidence:
-                    result = merge_details(result, self.extract(paper, text, urls, source))
-            except Exception as exc:
+                    result = merge_details(
+                        result, self.extract(paper, text, urls, source), fill_only=curated
+                    )
+            except SOURCE_ERRORS as exc:
+                if isinstance(exc, ServiceError) and getattr(exc, "fatal", False):
+                    raise
                 failures.append(url)
                 LOG.warning("Metadata source unavailable for %s (%s)", paper.id, type(exc).__name__)
         if (
@@ -360,13 +446,23 @@ class Enricher:
         ):
             try:
                 text, urls = self.pdf_evidence(paper)
+                checked = True
                 result = merge_details(
-                    result, self.extract(paper, text, urls, paper.pdf_url), prefer_incoming=True
+                    result,
+                    self.extract(paper, text, urls, paper.metadata_pdf_url),
+                    prefer_incoming=not curated,
+                    fill_only=curated,
                 )
                 if check_pdf_mapping:
-                    result.notes.append("HTML 作者机构标记不完整，已补查 PDF；优先保留 PDF 署名。")
-            except Exception as exc:
-                failures.append(paper.pdf_url)
+                    result.notes.append(
+                        "HTML 作者机构标记不完整，已补查 PDF；优先保留人工核实署名。"
+                        if curated
+                        else "HTML 作者机构标记不完整，已补查 PDF；优先保留 PDF 署名。"
+                    )
+            except SOURCE_ERRORS as exc:
+                if isinstance(exc, ServiceError) and getattr(exc, "fatal", False):
+                    raise
+                failures.append(paper.metadata_pdf_url)
                 LOG.warning("PDF metadata unavailable for %s (%s)", paper.id, type(exc).__name__)
         if (
             self.config.enrichment.follow_project_page
@@ -375,13 +471,16 @@ class Enricher:
         ):
             try:
                 html, source = self.fetch_html(result.project_url)
+                checked = True
                 text, _ = html_evidence(html)
                 if project_identity(paper, text):
                     supplement = self.extract(paper, text, [], source)
                     result = merge_details(result, supplement, fill_only=True)
                 else:
                     result.notes.append("项目页未能与本论文身份对应，未采用该页的作者机构。")
-            except Exception as exc:
+            except SOURCE_ERRORS as exc:
+                if isinstance(exc, ServiceError) and getattr(exc, "fatal", False):
+                    raise
                 failures.append(result.project_url)
                 LOG.warning(
                     "Project metadata unavailable for %s (%s)", paper.id, type(exc).__name__
@@ -397,4 +496,4 @@ class Enricher:
             result.notes.append("部分作者的机构仍待核实：" + ", ".join(sorted(missing)))
         if failures:
             result.notes.append("无法完成读取或提取的来源：" + ", ".join(failures))
-        return result
+        return classify_details(result, paper, failures, checked=checked)

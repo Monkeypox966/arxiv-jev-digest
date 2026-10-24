@@ -16,6 +16,8 @@ page_size = 200
 max_candidates = 10000
 request_interval_seconds = 3.1
 include_cross_lists = true
+catch_up = true
+catch_up_max_days = 14 # Exact dates only; fail if outside arXiv recent coverage.
 
 [jev]
 backend = "typesafe" # or "openrouter" with OPENROUTER_API_KEY
@@ -38,8 +40,9 @@ combine = "max" # or "noisy_or"; composed scores are ranking signals
 # Relevance gate first; verified institution filter and ranking before Top K.
 enabled = true
 institution_weight = 0.20 # final = 0.80 * relevance + 0.20 * institution
-min_institution_score = 0.60 # verified but unlisted institutions score 0
+min_institution_score = 0.60 # applies to institutions with an explicit configured score
 unknown_policy = "keep" # "exclude" for strict filtering when metadata is unavailable
+unlisted_policy = "keep" # absence from a preference list is not a low-quality verdict
 # Defaults: src/arxiv_digest/data/institutions.json; user preference, not a league table.
 # [[ranking.institutions]] entries replace the bundled list (see docs/ranking.md).
 
@@ -118,3 +121,18 @@ timeout_seconds = 45
 max_pdf_mb = 25
 max_pdf_pages = 40 # Scan body links beyond the header; stop at References.
 follow_project_page = true # One confirmed project page, only to fill missing affiliations.
+incomplete_cache_hours = 24
+retry_missing_affiliations = true
+retry_attempts = 3
+retry_limit_per_run = 20
+
+[budget]
+# Per run, including HTTP retries. Tokens without provider usage use conservative estimates.
+max_jev_calls = 10000
+max_deepseek_calls = 200
+max_input_tokens = 2000000
+max_output_tokens = 300000
+
+[notifications]
+# Scheduled/send failures can notify the configured recipients; previews never send mail.
+email_on_failure = true

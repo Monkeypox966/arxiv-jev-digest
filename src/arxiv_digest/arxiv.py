@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import re
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from html import unescape
 from html.parser import HTMLParser
-from urllib.parse import unquote, urlsplit
+from urllib.parse import unquote, urljoin, urlsplit
 from xml.etree.ElementTree import ParseError
 
 import httpx
@@ -25,6 +25,12 @@ NS = {
 }
 
 
+class AnnouncementGapError(ServiceError):
+    """A checkpoint cannot be recovered from verifiable dated announcements."""
+
+    recovery_required = True
+
+
 def normalize_id(value: str) -> str:
     value = unquote(value.strip())
     if "://" in value:
@@ -33,6 +39,12 @@ def normalize_id(value: str) -> str:
     if not re.fullmatch(r"(?:\d{4}\.\d{4,5}|[a-zA-Z.-]+/\d{7})", value):
         raise ServiceError("arXiv: invalid paper identifier in feed")
     return value
+
+
+def version_suffix(value: str) -> str:
+    """Return a version only when the source explicitly supplies one."""
+    match = re.search(r"(v\d+)$", unquote(value.strip()))
+    return match[1] if match else ""
 
 
 def clean(value: str) -> str:
@@ -87,6 +99,8 @@ def parse_atom(text: str) -> tuple[list[Paper], int, int]:
             authors=[clean(a.text or "") for a in entry.findall("a:author/a:name", NS)],
             categories=categories,
             published=entry.findtext("a:published", default="", namespaces=NS),
+            version=version_suffix(raw_id),
+            updated=entry.findtext("a:updated", default="", namespaces=NS),
         )
         if not paper.title or not paper.abstract or not paper.published or not all(categories):
             raise ServiceError(
@@ -94,6 +108,8 @@ def parse_atom(text: str) -> tuple[list[Paper], int, int]:
             )
         if not categories:
             raise ServiceError("arXiv: entry missing category")
+        if not paper.authors or not all(paper.authors):
+            raise ServiceError("arXiv: entry missing author names")
         papers.append(paper)
     return papers, int(total_text), len(entries)
 
@@ -120,6 +136,8 @@ def parse_rss(text: str, *, include_cross_lists: bool) -> list[Paper]:
             published=entry.findtext(
                 "pubDate", default=root.findtext("channel/pubDate", default="")
             ),
+            version=version_suffix(entry.findtext("link", default="")),
+            updated=entry.findtext("a:updated", default="", namespaces=NS),
         )
         if not paper.title or not abstract:
             raise ServiceError("arXiv: RSS entry missing title or abstract")
@@ -158,7 +176,7 @@ def parse_latest_listing(text: str) -> tuple[str, list[str]]:
     if listing is None:
         raise ServiceError("arXiv: announcement list missing")
     ids = [
-        normalize_id("https://arxiv.org" + a["href"])
+        normalize_id(urljoin("https://arxiv.org", a["href"]))
         for a in listing.select('dt a[title="Abstract"]')
     ]
     if len(ids) != int(count_match[1]) or len(set(ids)) != len(ids):
@@ -166,11 +184,170 @@ def parse_latest_listing(text: str) -> tuple[str, list[str]]:
     return date, ids
 
 
+def parse_recent_page(text: str) -> tuple[list[tuple[str, list[str], int]], int]:
+    """Parse dated groups, allowing a batch to span listing pages.
+
+    Monthly listings deliberately are not accepted: arXiv exposes no exact
+    daily announcement boundaries there, only in the dated recent listing.
+    """
+    soup = BeautifulSoup(text, "html.parser")
+    total_match = re.search(r"\bTotal of\s+([\d,]+)\s+entries\b", soup.get_text(" "))
+    if not total_match:
+        raise ServiceError("arXiv: recent listing missing total entry count")
+    total = int(total_match[1].replace(",", ""))
+    groups = []
+    for heading in soup.find_all("h3"):
+        label = heading.get_text(" ", strip=True)
+        date_match = re.search(r"[A-Z][a-z]{2}, \d{1,2} [A-Z][a-z]{2} \d{4}", label)
+        if not date_match:
+            continue
+        count_match = re.search(r"showing\s+(\d+)\s+of\s+(\d+)\s+entries", label)
+        if not count_match:
+            raise ServiceError("arXiv: unrecognized recent announcement header")
+        announced = datetime.strptime(date_match[0], "%a, %d %b %Y").date().isoformat()
+        ids = []
+        # A heading can be inside or before a <dl>; stop at the next date rather
+        # than accidentally collecting a following day's entries.
+        for element in heading.next_elements:
+            if getattr(element, "name", None) == "h3":
+                break
+            if getattr(element, "name", None) == "dt":
+                anchor = element.select_one('a[title="Abstract"]')
+                if anchor is not None:
+                    ids.append(normalize_id(urljoin("https://arxiv.org", anchor["href"])))
+        shown, expected = map(int, count_match.groups())
+        if len(ids) != shown or shown > expected or len(set(ids)) != len(ids):
+            raise ServiceError("arXiv: recent page is truncated or contains duplicate IDs")
+        groups.append((announced, ids, expected))
+    if not groups or total <= 0:
+        raise ServiceError("arXiv: recent listing has no verifiable dated announcements")
+    return groups, total
+
+
+def fetch_recent_announcements(
+    settings: ArxivSettings, client: httpx.Client, category: str, limiter: RateLimiter
+) -> dict[str, list[str]]:
+    """Read the entire available recent history without silently clipping a day."""
+    batches: dict[str, list[str]] = {}
+    totals: dict[str, int] = {}
+    seen = set()
+    offset, expected_total = 0, None
+    while True:
+        response = request(
+            client,
+            "GET",
+            f"https://arxiv.org/list/{category}/recent",
+            service="arXiv recent catch-up",
+            limiter=limiter,
+            params={"skip": offset, "show": 2000},
+        )
+        groups, total = parse_recent_page(response.text)
+        if total > 30000:
+            raise ServiceError("arXiv: recent history exceeds the 30000-entry recovery limit")
+        if expected_total is not None and expected_total != total:
+            raise ServiceError("arXiv: recent result set changed during pagination; rerun")
+        expected_total = total
+        page_count = 0
+        for announced, ids, count in groups:
+            if announced in totals and totals[announced] != count:
+                raise ServiceError("arXiv: announcement batch changed during pagination; rerun")
+            totals[announced] = count
+            if seen.intersection(ids):
+                raise ServiceError("arXiv: duplicate IDs during recent pagination; rerun")
+            seen.update(ids)
+            batches.setdefault(announced, []).extend(ids)
+            page_count += len(ids)
+        if not page_count or offset + page_count > total:
+            raise ServiceError("arXiv: invalid recent pagination entry count")
+        offset += page_count
+        if offset == total:
+            break
+    if any(len(ids) != totals[announced] for announced, ids in batches.items()):
+        raise ServiceError("arXiv: recent announcement batch is truncated; refusing recovery")
+    return batches
+
+
+def catch_up_ids(
+    settings: ArxivSettings, client: httpx.Client, category: str, limiter: RateLimiter, since: str
+) -> dict[str, str]:
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", since):
+        raise ServiceError("arXiv: invalid announcement checkpoint; expected YYYY-MM-DD")
+    try:
+        checkpoint = date.fromisoformat(since)
+    except ValueError:
+        raise ServiceError("arXiv: invalid announcement checkpoint date") from None
+    batches = fetch_recent_announcements(settings, client, category, limiter)
+    newest, oldest = max(batches), min(batches)
+    if since >= newest:
+        # Keep the latest batch available for a new recipient. Delivery history,
+        # not a source checkpoint, decides which individual papers are eligible.
+        dates = [newest]
+    else:
+        if (date.fromisoformat(newest) - checkpoint).days > settings.catch_up_max_days:
+            raise AnnouncementGapError(
+                "arXiv: announcement gap exceeds catch_up_max_days; "
+                "use an explicit API-window recovery before resetting the checkpoint"
+            )
+        if since < oldest:
+            raise AnnouncementGapError(
+                "arXiv: checkpoint predates available recent announcement history; "
+                "exact daily catch-up cannot be verified. Recover with API mode explicitly "
+                "before resetting the checkpoint; submission dates are not announcement dates"
+            )
+        dates = sorted(announced for announced in batches if announced > since)
+    return {id: announced for announced in dates for id in batches[announced]}
+
+
+def fetch_by_ids(
+    settings: ArxivSettings,
+    client: httpx.Client,
+    ids: list[str],
+    limiter: RateLimiter | None = None,
+) -> list[Paper]:
+    """Fetch complete API metadata, including explicit versions, for known IDs."""
+    if len(ids) > settings.max_candidates:
+        raise ServiceError("arXiv: requested IDs exceed max_candidates")
+    ids = [normalize_id(id) + version_suffix(id) for id in ids]
+    requested = {normalize_id(id): version_suffix(id) for id in ids}
+    if len(requested) != len(ids):
+        raise ServiceError("arXiv: duplicate requested paper IDs")
+    limiter = limiter or RateLimiter(settings.request_interval_seconds)
+    papers = []
+    for start in range(0, len(ids), settings.page_size):
+        batch = ids[start : start + settings.page_size]
+        response = request(
+            client,
+            "GET",
+            "https://export.arxiv.org/api/query",
+            service="arXiv API",
+            limiter=limiter,
+            params={"id_list": ",".join(batch), "max_results": len(batch)},
+        )
+        page, total, count = parse_atom(response.text)
+        if (
+            {p.id for p in page} != {normalize_id(id) for id in batch}
+            or count != len(batch)
+            or len(page) != len(batch)
+            or total != len(batch)
+        ):
+            raise ServiceError("arXiv: missing or unexpected papers in batch metadata")
+        if any(requested[p.id] and p.version != requested[p.id] for p in page):
+            raise ServiceError("arXiv: requested paper version does not match returned metadata")
+        papers.extend(page)
+    return papers
+
+
 def fetch_latest(
-    settings: ArxivSettings, client: httpx.Client, limiter: RateLimiter
+    settings: ArxivSettings, client: httpx.Client, limiter: RateLimiter, *, since: str | None = None
 ) -> list[Paper]:
     announced: dict[str, str] = {}
     for category in settings.categories:
+        if getattr(settings, "catch_up", False) and since:
+            for id, announced_date in catch_up_ids(
+                settings, client, category, limiter, since
+            ).items():
+                announced[id] = max(announced_date, announced.get(id, ""))
+            continue
         response = request(
             client,
             "GET",
@@ -185,42 +362,35 @@ def fetch_latest(
     if len(announced) > settings.max_candidates:
         raise ServiceError("arXiv: latest batch exceeds max_candidates")
     papers = []
-    ids = list(announced)
-    for start in range(0, len(ids), settings.page_size):
-        batch = ids[start : start + settings.page_size]
-        response = request(
-            client,
-            "GET",
-            "https://export.arxiv.org/api/query",
-            service="arXiv API",
-            limiter=limiter,
-            params={"id_list": ",".join(batch), "max_results": len(batch)},
-        )
-        page, _, _ = parse_atom(response.text)
-        if {p.id for p in page} != set(batch) or len(page) != len(batch):
-            raise ServiceError("arXiv: missing or unexpected papers in batch metadata")
-        for paper in page:
-            if not settings.include_cross_lists and not any(
-                category_matches(paper.categories[0], c) for c in settings.categories
-            ):
-                continue
-            papers.append(replace(paper, announced=announced[paper.id]))
+    for paper in fetch_by_ids(settings, client, list(announced), limiter):
+        if not settings.include_cross_lists and not any(
+            category_matches(paper.categories[0], c) for c in settings.categories
+        ):
+            continue
+        papers.append(replace(paper, announced=announced[paper.id]))
     return papers
 
 
 def fetch_papers(
-    settings: ArxivSettings, client: httpx.Client, *, now: datetime | None = None
+    settings: ArxivSettings,
+    client: httpx.Client,
+    *,
+    now: datetime | None = None,
+    since: str | None = None,
 ) -> list[Paper]:
     limiter = RateLimiter(settings.request_interval_seconds)
     if settings.source == "latest":
-        return fetch_latest(settings, client, limiter)
+        return fetch_latest(settings, client, limiter, since=since)
     if settings.source == "rss":
         url = "https://rss.arxiv.org/rss/" + "+".join(settings.categories)
         text = request(client, "GET", url, service="arXiv RSS", limiter=limiter).text
         papers = parse_rss(text, include_cross_lists=settings.include_cross_lists)
         if len(papers) > settings.max_candidates:
             raise ServiceError("arXiv: candidate limit exceeded; raise max_candidates")
-        return papers
+        # RSS is an announcement/discovery feed: dc:creator may combine all
+        # authors in one string and pubDate is not the original submission date.
+        # Resolve its filtered IDs through the API before screening or reporting.
+        return fetch_by_ids(settings, client, [paper.id for paper in papers], limiter)
 
     now = (now or datetime.now(UTC)).astimezone(UTC)
     # Submission time precedes public announcement. A rolling window covers that delay,

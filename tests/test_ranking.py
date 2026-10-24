@@ -84,6 +84,8 @@ def test_verified_unlisted_and_lower_scores_are_filtered(paper):
     settings = RankingSettings(enabled=True)
     unlisted = rank_paper(paper, 0.99, details(paper, "Unlisted University"), settings)
     assert unlisted.status == "unlisted"
+    assert passes_institution_filter(unlisted, settings)
+    settings.unlisted_policy = "exclude"
     assert not passes_institution_filter(unlisted, settings)
     lower = rank_paper(paper, 0.99, details(paper, "ROBOTIS"), settings)
     assert passes_institution_filter(lower, settings)
@@ -153,6 +155,7 @@ def test_pipeline_relevance_gate_then_metadata_filter_then_ranking_and_top_k(
     config, summary, monkeypatch
 ):
     config.enrichment.enabled = config.ranking.enabled = True
+    config.ranking.unlisted_policy = "exclude"
     config.selection.top_k = 1
     # 01: slightly more relevant but lower institution preference.
     # 02: initially below Top K, should win after institution ranking.

@@ -31,6 +31,8 @@ class ArxivSettings(Settings):
     max_candidates: int = Field(default=10000, ge=1, le=30000)
     request_interval_seconds: float = Field(default=3.1, ge=3)
     include_cross_lists: bool = True
+    catch_up: bool = False
+    catch_up_max_days: int = Field(default=14, ge=1, le=31)
 
     @field_validator("categories")
     @classmethod
@@ -132,6 +134,21 @@ class EnrichmentSettings(Settings):
     max_pdf_mb: int = Field(default=25, ge=1, le=50)
     max_pdf_pages: int = Field(default=40, ge=2, le=100)
     follow_project_page: bool = True
+    incomplete_cache_hours: int = Field(default=24, ge=1, le=168)
+    retry_missing_affiliations: bool = True
+    retry_attempts: int = Field(default=3, ge=1, le=10)
+    retry_limit_per_run: int = Field(default=20, ge=1, le=100)
+
+
+class BudgetSettings(Settings):
+    max_jev_calls: int = Field(default=10000, ge=1, le=100000)
+    max_deepseek_calls: int = Field(default=200, ge=1, le=10000)
+    max_input_tokens: int = Field(default=2000000, ge=1000)
+    max_output_tokens: int = Field(default=300000, ge=1000)
+
+
+class NotificationSettings(Settings):
+    email_on_failure: bool = False
 
 
 class InstitutionRule(Settings):
@@ -159,6 +176,7 @@ class RankingSettings(Settings):
     institution_weight: float = Field(default=0.20, ge=0, le=0.5)
     min_institution_score: float = Field(default=0.6, ge=0, le=1)
     unknown_policy: Literal["keep", "exclude"] = "keep"
+    unlisted_policy: Literal["keep", "exclude"] = "keep"
     institutions: list[InstitutionRule] = Field(default_factory=default_institutions)
 
 
@@ -177,6 +195,8 @@ class Config(Settings):
     retention: RetentionSettings = Field(default_factory=RetentionSettings)
     enrichment: EnrichmentSettings = Field(default_factory=EnrichmentSettings)
     ranking: RankingSettings = Field(default_factory=RankingSettings)
+    budget: BudgetSettings = Field(default_factory=BudgetSettings)
+    notifications: NotificationSettings = Field(default_factory=NotificationSettings)
 
     @field_validator("timezone")
     @classmethod

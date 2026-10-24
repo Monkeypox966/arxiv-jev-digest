@@ -12,6 +12,7 @@ enabled = true
 institution_weight = 0.20
 min_institution_score = 0.60
 unknown_policy = "keep"
+unlisted_policy = "keep"
 ```
 
 `enrichment.enabled = true` 是开启机构排序的前提。所有达到相关性门槛的论文都先核实机构，不在旧的 Top K 中二次重排。只有最终入选论文生成摘要；机构提取本身可能调用 DeepSeek，查阅量与费用因此增加。机构结果单独缓存，可复用。
@@ -19,9 +20,9 @@ unknown_policy = "keep"
 - 综合分 = `(1 − institution_weight) × Jev 相关性分 + institution_weight × 机构分`。机构权重取值 0–0.5，确保相关性权重至少一半。
 - 先检查相关性 `selection.min_score` 与排除规则。高机构分不能让不相关论文通过。
 - 机构分取已核实作者所属机构的**最高分**，不累计机构数量，不区分一作或通讯作者，不凭作者名猜测机构。
-- 已核实机构但未命中名单：分值为 0，默认低于 0.6 门槛，会过滤。报告审计文件标记 `unlisted`，便于发现漏收机构。
+- 已核实机构但未命中名单：标记 `unlisted`，没有机构加分。默认 `unlisted_policy = "keep"` 保留并标注，不把名单未收录视作低质量；设 `exclude` 可恢复严格名单过滤。
 - 机构资料无法核实、缺少作者对应关系或来源：标记 `unknown`，默认保留但无机构加分。设 `unknown_policy = "exclude"` 可严格移除。这样可以区分“未进入偏好名单”和“没有取得可靠资料”。
-- `min_institution_score` 取值 0–1；提高到 0.8 会移除 0.6 档，设为 0 则不按机构分过滤（未知机构仍由 `unknown_policy` 决定）。
+- `min_institution_score` 仅作用于匹配到明确分值的机构，取值 0–1；提高到 0.8 会移除 0.6 档，设为 0 不按分值过滤。未收录和未知机构分别由两项 policy 决定。
 - 同分按相关性、arXiv ID 稳定排序。邮件保留原相关性分，另显示综合排序分、机构分及匹配依据。
 
 默认名单位于 [`institutions.json`](../src/arxiv_digest/data/institutions.json)：

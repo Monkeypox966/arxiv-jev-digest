@@ -11,8 +11,33 @@ from pydantic import ValidationError
 from .config import Config, require_env
 from .http import RateLimiter, ServiceError, request, retry_delay
 from .models import Decision, Paper, Summary
+from .usage import UsageTracker, input_reservation
 
 SUMMARY_PROMPT_VERSION = 3
+
+
+def usage_callbacks(
+    tracker: UsageTracker | None, service: str, purpose: str, body: dict, output_tokens: int
+) -> dict:
+    if tracker is None:
+        return {}
+
+    def before():
+        return tracker.reserve(
+            service, purpose, input_tokens=input_reservation(body), output_tokens=output_tokens
+        )
+
+    def after(token, response):
+        usage = None
+        if response is not None:
+            try:
+                payload = response.json()
+                usage = payload.get("usage") if isinstance(payload, dict) else None
+            except ValueError:
+                pass
+        tracker.finish(token, usage, responded=response is not None)
+
+    return {"before_attempt": before, "after_attempt": after}
 
 
 def fingerprint(value) -> str:
@@ -113,15 +138,26 @@ def parse_decision(data: dict, config: Config) -> Decision:
 
 
 class JevClient:
-    def __init__(self, config: Config, client: httpx.Client):
+    def __init__(self, config: Config, client: httpx.Client, *, usage: UsageTracker | None = None):
         self.config = config
         self.client = client
+        self.usage = usage
         self.limiter = RateLimiter(60 / config.jev.requests_per_minute)
         key_name = "TYPESAFE_API_KEY" if config.jev.backend == "typesafe" else "OPENROUTER_API_KEY"
         self.key = require_env(key_name)
 
     def judge(self, paper: Paper) -> Decision:
         settings = self.config.jev
+        questions = build_questions(self.config)
+        body = {
+            "model": settings.model,
+            "state": {
+                "title": paper.title,
+                "abstract": paper.abstract,
+                "categories": paper.categories,
+            },
+            "questions": questions,
+        }
         response = request(
             self.client,
             "POST",
@@ -131,15 +167,8 @@ class JevClient:
             attempts=settings.attempts,
             timeout=settings.timeout_seconds,
             headers={"Authorization": f"Bearer {self.key}"},
-            json={
-                "model": settings.model,
-                "state": {
-                    "title": paper.title,
-                    "abstract": paper.abstract,
-                    "categories": paper.categories,
-                },
-                "questions": build_questions(self.config),
-            },
+            json=body,
+            **usage_callbacks(self.usage, "jev", "screening", body, len(questions) * 64 + 256),
         )
         try:
             return parse_decision(response.json(), self.config)
@@ -148,9 +177,10 @@ class JevClient:
 
 
 class DeepSeekClient:
-    def __init__(self, config: Config, client: httpx.Client):
+    def __init__(self, config: Config, client: httpx.Client, *, usage: UsageTracker | None = None):
         self.config = config
         self.client = client
+        self.usage = usage
         self.key = require_env("DEEPSEEK_API_KEY")
         self.limiter = RateLimiter(60 / config.deepseek.requests_per_minute)
 
@@ -181,10 +211,13 @@ class DeepSeekClient:
             + json.dumps(example, ensure_ascii=False)
         )
         return self.complete_json(
-            system, {"title": paper.title, "abstract": paper.abstract}, Summary.model_validate_json
+            system,
+            {"title": paper.title, "abstract": paper.abstract},
+            Summary.model_validate_json,
+            purpose="summary",
         )
 
-    def complete_json(self, system: str, context: dict, parser):
+    def complete_json(self, system: str, context: dict, parser, *, purpose="metadata"):
         settings = self.config.deepseek
         body = {
             "model": settings.model,
@@ -213,6 +246,7 @@ class DeepSeekClient:
                     timeout=settings.timeout_seconds,
                     headers={"Authorization": f"Bearer {self.key}"},
                     json=body,
+                    **usage_callbacks(self.usage, "deepseek", purpose, body, settings.max_tokens),
                 )
             except ServiceError as exc:
                 if not exc.retryable or attempt + 1 == settings.attempts:

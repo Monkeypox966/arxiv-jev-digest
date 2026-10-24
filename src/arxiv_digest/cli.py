@@ -11,11 +11,13 @@ from defusedxml.common import DefusedXmlException
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
-from .config import load_config, validate_credentials
+from .clients import fingerprint
+from .config import ArxivSettings, load_config, recipients, validate_credentials
 from .demo import demo
 from .http import USER_AGENT, ServiceError
+from .operations import actions_summary, inspect_metadata, notify_failure, persist_outbox
 from .pipeline import run
-from .store import Store
+from .store import Store, recipient_key
 
 
 def main(argv=None) -> int:
@@ -31,7 +33,35 @@ def main(argv=None) -> int:
     execute.add_argument(
         "--dry-run", action="store_true", help="Use real APIs; do not send or mark read"
     )
+    execute.add_argument(
+        "--persist-outbox",
+        action="store_true",
+        help="Persist the pending delivery with the trusted Actions state helper before SMTP",
+    )
+    execute.add_argument(
+        "--recovery-days",
+        type=int,
+        choices=range(1, 32),
+        metavar="1-31",
+        help="Explicit API submission-window recovery; does not reset announcement checkpoints",
+    )
     sub.add_parser("pending", help="List unresolved email attempts without revealing addresses")
+    inspect = sub.add_parser(
+        "inspect", help="Verify metadata for 1-5 papers; uses APIs, never emails"
+    )
+    inspect.add_argument("paper_ids", nargs="+")
+    inspect.add_argument("--refresh", action="store_true", help="Bypass metadata cache")
+    sub.add_parser(
+        "status", help="Show latest health and API usage; write Actions summary if available"
+    )
+    notify = sub.add_parser(
+        "notify-failure", help="Send optional failure alert; no model API calls"
+    )
+    notify.add_argument("--run-url", required=True)
+    sub.add_parser(
+        "reset-checkpoints",
+        help="After manual gap recovery: clear source checkpoints; keep sent history",
+    )
     resolve = sub.add_parser(
         "resolve", help="Resolve an uncertain email attempt after checking inbox"
     )
@@ -59,6 +89,32 @@ def main(argv=None) -> int:
                 )
         elif args.command == "demo":
             print(f"Offline demo: {demo(config) / 'digest.html'}")
+        elif args.command == "status":
+            print(json.dumps(actions_summary(config), ensure_ascii=False, indent=2))
+        elif args.command == "notify-failure":
+            print(f"Failure alerts sent: {notify_failure(config, args.run_url)}")
+        elif args.command == "inspect":
+            with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=60) as client:
+                result = inspect_metadata(config, client, args.paper_ids, refresh=args.refresh)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif args.command == "reset-checkpoints":
+            addresses = recipients(config)
+            if not addresses:
+                raise ValueError("Set EMAIL_TO before resetting source checkpoints")
+            with Store(config.state_dir) as store:
+                for address in addresses:
+                    for category in config.arxiv.categories:
+                        source = fingerprint(
+                            {
+                                "categories": [category],
+                                "cross_lists": config.arxiv.include_cross_lists,
+                                "mode": "latest",
+                            }
+                        )
+                        store.reset_checkpoint(recipient_key(address), source)
+            print(
+                "Configured announcement checkpoints cleared. Sent and reviewed history preserved."
+            )
         elif args.command in {"pending", "resolve"}:
             with Store(config.state_dir) as store:
                 if args.command == "pending":
@@ -67,8 +123,26 @@ def main(argv=None) -> int:
                     store.resolve(args.delivery_id, args.outcome)
                     print("Delivery resolved.")
         else:
+            if args.recovery_days:
+                if args.recovery_days > config.retention.cache_days:
+                    raise ValueError("Recovery days must not exceed retention.cache_days")
+                config.arxiv = ArxivSettings.model_validate(
+                    {
+                        **config.arxiv.model_dump(),
+                        "source": "api",
+                        "catch_up": False,
+                        "lookback_days": args.recovery_days,
+                    }
+                )
             with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=60) as client:
-                result = run(config, client, dry_run=args.dry_run)
+                result = run(
+                    config,
+                    client,
+                    dry_run=args.dry_run,
+                    outbox_hook=(lambda: persist_outbox(config_path.parent))
+                    if args.persist_outbox
+                    else None,
+                )
             print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except ValidationError as exc:
