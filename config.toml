@@ -96,3 +96,5 @@ cache_days = 30
 enabled = true
 timeout_seconds = 45
 max_pdf_mb = 25
+max_pdf_pages = 40 # Scan body links beyond the header; stop at References.
+follow_project_page = true # One confirmed project page, only to fill missing affiliations.

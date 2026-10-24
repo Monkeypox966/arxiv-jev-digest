@@ -14,6 +14,7 @@ dependencies = [
   "python-dotenv>=1.1,<2",
   "pypdf>=6,<7",
   "tzdata>=2025.2",
+  "fonttools>=4,<5",
 ]
 
 [project.scripts]

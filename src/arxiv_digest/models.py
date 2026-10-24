@@ -57,18 +57,25 @@ class Affiliation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     institution: str = Field(min_length=1, max_length=400)
     authors: list[str] = Field(default_factory=list)
+    source: str | None = None
+
+    @field_validator("source")
+    @classmethod
+    def safe_source(cls, value):
+        return PaperDetails.safe_project_url(value)
 
 
 class PaperDetails(BaseModel):
     model_config = ConfigDict(extra="forbid")
     project_url: str | None = None
+    project_source: str | None = None
     project_label: str = "项目网站"
     affiliations: list[Affiliation] = Field(default_factory=list)
     sources: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
     reviewed_on: str = ""
 
-    @field_validator("project_url")
+    @field_validator("project_url", "project_source")
     @classmethod
     def safe_project_url(cls, value):
         from urllib.parse import urlsplit

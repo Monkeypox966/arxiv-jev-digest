@@ -130,6 +130,8 @@ class EnrichmentSettings(Settings):
     enabled: bool = False
     timeout_seconds: float = Field(default=45, gt=0, le=120)
     max_pdf_mb: int = Field(default=25, ge=1, le=50)
+    max_pdf_pages: int = Field(default=40, ge=2, le=100)
+    follow_project_page: bool = True
 
 
 class InstitutionRule(Settings):

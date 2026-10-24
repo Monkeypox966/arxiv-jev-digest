@@ -83,11 +83,17 @@ def render(config: Config, picks: list[Pick], now: datetime, stats: dict, *, dem
                 f"局限：{pick.summary.limitations}",
             ]
         if pick.details:
-            lines.append("项目：" + (pick.details.project_url or "未找到作者项目网站"))
+            lines.append(
+                "项目：" + (pick.details.project_url or "未能确认项目链接，详见来源与说明")
+            )
             for affiliation in pick.details.affiliations:
                 lines.append(
                     "机构：" + affiliation.institution + "；作者：" + ", ".join(affiliation.authors)
                 )
+                if affiliation.source:
+                    lines.append("机构来源：" + affiliation.source)
+            if pick.details.project_source:
+                lines.append("项目链接来源：" + pick.details.project_source)
             if not pick.details.affiliations:
                 lines.append("机构：未能核实，见论文原文")
             lines += ["核查来源：" + url for url in pick.details.sources]
