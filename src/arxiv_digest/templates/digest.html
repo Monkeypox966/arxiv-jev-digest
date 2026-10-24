@@ -19,6 +19,7 @@
           <strong style="font-size:24px;color:#17654b;">{{ picks|length }}</strong> 篇精选
           <span style="color:#7b8b83;"> &nbsp; / &nbsp; {{ stats.get('fetched', 0) }} 篇候选</span>
           <p style="font-size:13px;color:#6a7e73;margin:8px 0 0;">Jev 按研究兴趣筛选 · DeepSeek 依据原始摘要总结</p>
+          {% if ranking_enabled %}<p style="font-size:13px;color:#6a7e73;margin:8px 0 0;">排序：相关性 {{ '%.0f'|format((1 - institution_weight) * 100) }}% + 机构偏好 {{ '%.0f'|format(institution_weight * 100) }}% · 机构最低分 {{ '%.0f'|format(min_institution_score * 100) }}/100<br>机构过滤 {{ stats.get('institution_filtered', 0) }} 篇 · 机构待核实 {{ stats.get('institution_unknown', 0) }} 篇</p>{% endif %}
           {% if stats.get('announcement_dates') %}<p style="font-size:13px;color:#6a7e73;margin:8px 0 0;">最新公告批次：{{ stats['announcement_dates']|join(' / ') }} · 本次不以提交日期替代公告日期</p>{% endif %}
           {% if demo %}<p style="padding:10px 12px;background:#fff3d8;color:#80500c;font-size:13px;">离线演示：论文、分数与摘要均为虚构示例，未调用模型，未发送邮件。</p>{% endif %}
         </td></tr>
@@ -34,6 +35,15 @@
             {% if prob >= 0.5 %} &nbsp; · {{ labels.get(id, id) }} {{ '%.0f'|format(prob * 100) }}%{% endif %}
             {% endfor %}
           </p>
+          {% if pick.ranking %}
+          <p style="font-size:12px;color:#5b7063;margin:8px 0 14px;">
+            <strong>综合排序分 {{ '%.1f'|format(pick.ranking.score * 100) }}/100</strong>
+            {% if pick.ranking.status == 'unknown' %} · 机构待核实，未加分
+            {% else %} · 机构偏好分 {{ '%.0f'|format(pick.ranking.institution_score * 100) }}/100{% endif %}<br>
+            {% for match in pick.ranking.matches %}{{ match.institution }} → {{ match.rule }}（{{ '%.0f'|format(match.score * 100) }}）<br>{% endfor %}
+            {% if pick.ranking.status == 'unlisted' %}已核实机构，但未命中偏好名单。{% endif %}
+          </p>
+          {% endif %}
           <div style="padding:14px 16px;background:#edf5ef;border-left:3px solid #448b66;border-radius:0 6px 6px 0;font-size:15px;">{{ pick.summary.tldr }}</div>
           {% if not compact %}
           <p style="font-size:14px;margin:16px 0 8px;"><strong style="color:#244c3b;">研究问题</strong><br>{{ pick.summary.problem }}</p>
@@ -66,6 +76,7 @@
         {% endfor %}
         <tr><td style="padding:22px 28px;background:#e7eee9;border-radius:0 0 14px 14px;font-size:12px;color:#63776b;">
           摘要由 AI 依据标题与原始摘要生成，未阅读全文。匹配分数表示与兴趣的关联，不代表论文质量。<br>
+          {% if ranking_enabled %}机构偏好分来自可修改的名单，仅作质量代理指标，未对论文内容进行质量评审。<br>{% endif %}
           生成于 {{ date }} {{ generated }} · {{ timezone }}
         </td></tr>
       </table>

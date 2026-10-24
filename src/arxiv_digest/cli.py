@@ -50,6 +50,13 @@ def main(argv=None) -> int:
             print(f"Categories: {', '.join(config.arxiv.categories)}")
             print(f"Jev: {config.jev.backend} / {config.jev.model}")
             print(f"Summary model: {config.deepseek.model}; up to {config.selection.top_k} papers")
+            if config.ranking.enabled:
+                print(
+                    f"Ranking: {1 - config.ranking.institution_weight:.0%} relevance + "
+                    f"{config.ranking.institution_weight:.0%} institution; "
+                    f"institution minimum {config.ranking.min_institution_score:.0%}; "
+                    f"unknown metadata: {config.ranking.unknown_policy}"
+                )
         elif args.command == "demo":
             print(f"Offline demo: {demo(config) / 'digest.html'}")
         elif args.command in {"pending", "resolve"}:

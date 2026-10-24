@@ -20,23 +20,34 @@ def fingerprint(value) -> str:
     return hashlib.sha256(body.encode()).hexdigest()
 
 
+def decision_profile(config: Config) -> dict:
+    return {
+        "version": 1,
+        "backend": config.jev.backend,
+        "endpoint": config.jev.endpoint,
+        "model": config.jev.model,
+        "interests": [i.model_dump() for i in config.interests],
+        "exclusions": [e.model_dump() for e in config.exclusions],
+        "selection": config.selection.model_dump(),
+    }
+
+
 def profile_key(config: Config) -> str:
-    return fingerprint(
-        {
-            "version": 1,
-            "backend": config.jev.backend,
-            "endpoint": config.jev.endpoint,
-            "model": config.jev.model,
-            "interests": [i.model_dump() for i in config.interests],
-            "exclusions": [e.model_dump() for e in config.exclusions],
-            "selection": config.selection.model_dump(),
-        }
-    )
+    data = decision_profile(config)
+    if config.ranking.enabled:
+        data["ranking"] = config.ranking.model_dump()
+    return fingerprint(data)
 
 
 def decision_key(config: Config, paper: Paper) -> str:
     return fingerprint(
-        [profile_key(config), paper.id, paper.title, paper.abstract, paper.categories]
+        [
+            fingerprint(decision_profile(config)),
+            paper.id,
+            paper.title,
+            paper.abstract,
+            paper.categories,
+        ]
     )
 
 

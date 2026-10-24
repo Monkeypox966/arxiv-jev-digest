@@ -34,6 +34,15 @@ min_score = 0.60
 exclude_threshold = 0.85
 combine = "max" # or "noisy_or"; composed scores are ranking signals
 
+[ranking]
+# Relevance gate first; verified institution filter and ranking before Top K.
+enabled = true
+institution_weight = 0.20 # final = 0.80 * relevance + 0.20 * institution
+min_institution_score = 0.60 # verified but unlisted institutions score 0
+unknown_policy = "keep" # "exclude" for strict filtering when metadata is unavailable
+# Defaults: src/arxiv_digest/data/institutions.json; user preference, not a league table.
+# [[ranking.institutions]] entries replace the bundled list (see docs/ranking.md).
+
 [[interests]]
 id = "humanoid"
 label = "人形机器人与全身控制"

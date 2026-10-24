@@ -27,6 +27,9 @@ def render(config: Config, picks: list[Pick], now: datetime, stats: dict, *, dem
         demo=demo,
         timezone=config.timezone,
         compact=config.compact_summaries,
+        ranking_enabled=config.ranking.enabled,
+        institution_weight=config.ranking.institution_weight,
+        min_institution_score=config.ranking.min_institution_score,
         generated=now.strftime("%H:%M"),
     )
     lines = [subject, "", "依据标题与原始摘要筛选、总结；未阅读论文全文。", ""]
@@ -38,6 +41,16 @@ def render(config: Config, picks: list[Pick], now: datetime, stats: dict, *, dem
         ]
     if demo:
         lines.extend(["离线演示：论文、分数和摘要均为虚构示例，未调用任何模型。", ""])
+    if config.ranking.enabled:
+        lines += [
+            f"排序权重：相关性 {1 - config.ranking.institution_weight:.0%} + "
+            f"机构偏好 {config.ranking.institution_weight:.0%}；"
+            f"机构最低分 {config.ranking.min_institution_score * 100:.0f}/100。",
+            "机构分是可修改的偏好代理指标，不是对论文内容质量的评审。",
+            f"机构过滤 {stats.get('institution_filtered', 0)} 篇；"
+            f"机构待核实 {stats.get('institution_unknown', 0)} 篇。",
+            "",
+        ]
     for index, pick in enumerate(picks, 1):
         lines += [
             f"{index}. {pick.summary.title_zh}",
@@ -46,8 +59,22 @@ def render(config: Config, picks: list[Pick], now: datetime, stats: dict, *, dem
             "首次提交：" + pick.paper.published[:10],
             *(["公告批次：" + pick.paper.announced] if pick.paper.announced else []),
             f"匹配分数：{pick.decision.score:.1%}",
-            f"一句话：{pick.summary.tldr}",
         ]
+        if pick.ranking:
+            rank = pick.ranking
+            lines.append(
+                f"综合排序分：{rank.score * 100:.1f}/100；"
+                f"机构偏好分：{rank.institution_score * 100:.0f}/100"
+                if rank.status != "unknown"
+                else f"综合排序分：{rank.score * 100:.1f}/100；机构待核实，未加分"
+            )
+            lines += [
+                f"机构匹配：{match.institution} → {match.rule}（{match.score * 100:.0f}）"
+                for match in rank.matches
+            ]
+            if rank.status == "unlisted":
+                lines.append("已核实机构，但未命中偏好名单。")
+        lines.append(f"一句话：{pick.summary.tldr}")
         if not config.compact_summaries:
             lines += [
                 f"问题：{pick.summary.problem}",

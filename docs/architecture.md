@@ -6,7 +6,9 @@
 
 `clients.py` constructs one Noul per interest and exclusion. All questions for one paper share a Jev call. It validates finite numeric probabilities in [0, 1], composes weighted scores in Python, and records the actual model name. A bounded worker pool and request limiter control spend and throughput.
 
-Only the selected union across recipients is sent to DeepSeek. Summaries must contain all six nonempty string fields and finish normally. Invalid JSON, incomplete output, and selected transient service errors receive bounded retries. Authentication failures do not retry. Text from papers is treated as untrusted source data.
+With institution ranking enabled, all relevance-qualified candidates get sourced affiliation enrichment before the institution gate and Top K; metadata extraction may call DeepSeek. `ranking.py` matches configurable local aliases against verified author affiliations, uses the maximum matching institution preference, and combines it with relevance. Unknown metadata has an explicit keep/exclude policy, distinct from verified but unlisted institutions. A ranking audit includes all relevance-qualified candidates. Ranking changes affect review history but preserve Jev decision cache keys and recipient-wide sent deduplication.
+
+Only the selected union across recipients is summarized by DeepSeek. Summaries must contain all six nonempty string fields and finish normally. Invalid JSON, incomplete output, and selected transient service errors receive bounded retries. Authentication failures do not retry. Text from papers is treated as untrusted source data.
 
 `store.py` uses SQLite transactions. A cache key includes paper content and the relevant model / prompt / profile settings. Reviewed IDs are scoped by recipient hash and profile; sent IDs are scoped only by recipient hash, so changing interests does not resend delivered papers.
 

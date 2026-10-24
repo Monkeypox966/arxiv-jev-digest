@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from collections.abc import Callable, Iterable
@@ -22,6 +23,7 @@ from .enrichment import Enricher
 from .http import ServiceError
 from .mailer import SMTPMailer, build_message
 from .models import Decision, PaperDetails, Pick, Summary
+from .ranking import passes_institution_filter, rank_paper
 from .report import write_report
 from .store import Store, recipient_key
 
@@ -113,19 +115,89 @@ def run(
             store.cache("decision", decision_key(config, paper), decision.model_dump())
             if completed % 100 == 0 or completed == len(uncached):
                 LOG.info("Jev screening progress: %d/%d", completed, len(uncached))
+        qualified = {
+            address: [
+                p
+                for p in pool
+                if not decisions[p.id].excluded
+                and decisions[p.id].score >= config.selection.min_score
+            ]
+            for address, pool in pools.items()
+        }
+        qualified_papers = {p.id: p for group in qualified.values() for p in group}
+        deepseek = DeepSeekClient(config, client)
+        details = {}
+        detail_calls = 0
+
+        def enrich_papers(group):
+            nonlocal detail_calls
+            if not config.enrichment.enabled or not group:
+                return
+            enricher = Enricher(config, client, deepseek)
+            for index, paper in enumerate(group.values(), 1):
+                key = enricher.key(paper)
+                cached = store.cached("details", key)
+                detail = PaperDetails.model_validate(cached) if cached else enricher.enrich(paper)
+                details[paper.id] = detail
+                if not cached:
+                    detail_calls += 1
+                    if detail.sources:
+                        store.cache("details", key, detail.model_dump())
+                if index % 5 == 0 or index == len(group):
+                    LOG.info("Affiliation metadata progress: %d/%d", index, len(group))
+
+        rankings = {}
+        if config.ranking.enabled:
+            # Every relevant candidate gets the same opportunity for affiliation
+            # verification. Enriching only the old Top K would bias selection.
+            enrich_papers(qualified_papers)
+            rankings = {
+                p.id: rank_paper(p, decisions[p.id].score, details.get(p.id), config.ranking)
+                for p in qualified_papers.values()
+            }
         selected = {}
-        for address, pool in pools.items():
+        for address, pool in qualified.items():
             ranked = sorted(
                 (
                     p
                     for p in pool
-                    if not decisions[p.id].excluded
-                    and decisions[p.id].score >= config.selection.min_score
+                    if not config.ranking.enabled
+                    or passes_institution_filter(rankings[p.id], config.ranking)
                 ),
-                key=lambda p: (-decisions[p.id].score, p.id),
+                key=lambda p: (
+                    -(rankings[p.id].score if rankings else decisions[p.id].score),
+                    -decisions[p.id].score,
+                    p.id,
+                ),
             )
             selected[address] = ranked[: config.selection.top_k]
         summary_papers = {p.id: p for group in selected.values() for p in group}
+        if config.ranking.enabled:
+            run_dir.mkdir(parents=True, exist_ok=True)
+            audit = {
+                "institution_weight": config.ranking.institution_weight,
+                "min_institution_score": config.ranking.min_institution_score,
+                "unknown_policy": config.ranking.unknown_policy,
+                "papers": [
+                    {
+                        "id": p.id,
+                        "title": p.title,
+                        "url": p.url,
+                        "details": details[p.id].model_dump() if p.id in details else None,
+                        "ranking": rankings[p.id].model_dump(),
+                        "passes_institution_filter": passes_institution_filter(
+                            rankings[p.id], config.ranking
+                        ),
+                        "selected_for_any_recipient": p.id in summary_papers,
+                    }
+                    for p in qualified_papers.values()
+                ],
+            }
+            (run_dir / "ranking-audit.json").write_text(
+                json.dumps(audit, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        else:
+            enrich_papers(summary_papers)
         summaries = {}
         unsummarized = []
         for paper in summary_papers.values():
@@ -135,7 +207,6 @@ def run(
             else:
                 unsummarized.append(paper)
         LOG.info("Summarizing %d selected papers (%d cached)", len(unsummarized), len(summaries))
-        deepseek = DeepSeekClient(config, client)
         for completed, (paper, summary) in enumerate(
             bounded_map(deepseek.summarize, unsummarized, config.deepseek.concurrency), 1
         ):
@@ -143,22 +214,17 @@ def run(
             store.cache("summary", summary_key(config, paper), summary.model_dump())
             if completed % 5 == 0 or completed == len(unsummarized):
                 LOG.info("DeepSeek summary progress: %d/%d", completed, len(unsummarized))
-        details = {}
-        if config.enrichment.enabled and summary_papers:
-            enricher = Enricher(config, client, deepseek)
-            for paper in summary_papers.values():
-                key = enricher.key(paper)
-                cached = store.cached("details", key)
-                detail = PaperDetails.model_validate(cached) if cached else enricher.enrich(paper)
-                details[paper.id] = detail
-                if not cached and detail.sources:
-                    store.cache("details", key, detail.model_dump())
-            LOG.info("Enriched project and affiliation metadata for %d papers", len(details))
         stats = {
             "fetched": len(papers),
             "new_candidates": len(wanted),
             "jev_calls": len(uncached),
             "summary_calls": len(unsummarized),
+            "relevance_qualified": len(qualified_papers),
+            "metadata_lookups": detail_calls,
+            "institution_filtered": sum(
+                not passes_institution_filter(r, config.ranking) for r in rankings.values()
+            ),
+            "institution_unknown": sum(r.status == "unknown" for r in rankings.values()),
             "selected_unique": len(summary_papers),
             "emails_sent": 0,
             "dry_run": dry_run,
@@ -166,7 +232,7 @@ def run(
         }
         for index, address in enumerate(targets, 1):
             picks = [
-                Pick(p, decisions[p.id], summaries[p.id], details.get(p.id))
+                Pick(p, decisions[p.id], summaries[p.id], details.get(p.id), rankings.get(p.id))
                 for p in selected[address]
             ]
             directory = run_dir if len(targets) == 1 else run_dir / f"digest-{index}"

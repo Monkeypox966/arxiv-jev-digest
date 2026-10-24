@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import tomllib
+from importlib.resources import files
 from pathlib import Path
 from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -130,6 +132,34 @@ class EnrichmentSettings(Settings):
     max_pdf_mb: int = Field(default=25, ge=1, le=50)
 
 
+class InstitutionRule(Settings):
+    name: str = Field(min_length=1, max_length=200)
+    score: float = Field(ge=0, le=1)
+    aliases: list[str] = Field(min_length=1)
+    match_mode: Literal["phrase", "exact"] = "phrase"
+
+    @field_validator("name", "aliases")
+    @classmethod
+    def nonblank(cls, value):
+        values = value if isinstance(value, list) else [value]
+        if any(not item.strip() for item in values):
+            raise ValueError("Institution names and aliases cannot be blank")
+        return value
+
+
+def default_institutions() -> list[InstitutionRule]:
+    data = files("arxiv_digest").joinpath("data/institutions.json").read_text(encoding="utf-8")
+    return [InstitutionRule.model_validate(item) for item in json.loads(data)]
+
+
+class RankingSettings(Settings):
+    enabled: bool = False
+    institution_weight: float = Field(default=0.20, ge=0, le=0.5)
+    min_institution_score: float = Field(default=0.6, ge=0, le=1)
+    unknown_policy: Literal["keep", "exclude"] = "keep"
+    institutions: list[InstitutionRule] = Field(default_factory=default_institutions)
+
+
 class Config(Settings):
     timezone: str = "Asia/Shanghai"
     state_dir: Path = Path(".state")
@@ -144,6 +174,7 @@ class Config(Settings):
     email: EmailSettings = Field(default_factory=EmailSettings)
     retention: RetentionSettings = Field(default_factory=RetentionSettings)
     enrichment: EnrichmentSettings = Field(default_factory=EnrichmentSettings)
+    ranking: RankingSettings = Field(default_factory=RankingSettings)
 
     @field_validator("timezone")
     @classmethod
@@ -161,6 +192,10 @@ class Config(Settings):
             raise ValueError("Interest and exclusion IDs must be unique")
         if self.retention.cache_days < self.arxiv.lookback_days:
             raise ValueError("cache_days must cover lookback_days")
+        if self.ranking.enabled and not self.enrichment.enabled:
+            raise ValueError("Institution ranking requires enrichment.enabled = true")
+        if self.ranking.enabled and not self.ranking.institutions:
+            raise ValueError("Institution ranking requires at least one institution rule")
         return self
 
 

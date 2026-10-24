@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -90,12 +91,31 @@ class PaperDetails(BaseModel):
         return [cls.safe_project_url(value) for value in values]
 
 
+class InstitutionMatch(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    institution: str
+    rule: str
+    alias: str
+    score: float = Field(ge=0, le=1)
+
+
+class Ranking(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    relevance_score: float = Field(ge=0, le=1)
+    institution_score: float = Field(ge=0, le=1)
+    institution_weight: float = Field(ge=0, le=0.5)
+    score: float = Field(ge=0, le=1)
+    status: Literal["matched", "unlisted", "unknown"]
+    matches: list[InstitutionMatch] = Field(default_factory=list)
+
+
 @dataclass(frozen=True)
 class Pick:
     paper: Paper
     decision: Decision
     summary: Summary
     details: PaperDetails | None = None
+    ranking: Ranking | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -103,4 +123,5 @@ class Pick:
             "decision": self.decision.model_dump(),
             "summary": self.summary.model_dump(),
             "details": self.details.model_dump() if self.details else None,
+            "ranking": self.ranking.model_dump() if self.ranking else None,
         }
