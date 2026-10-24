@@ -73,7 +73,7 @@ host = "smtp.qq.com" # QQ Mail example; replace for another SMTP provider.
 port = 465
 security = "ssl" # "starttls" usually uses port 587
 sender_name = "arXiv Paper Digest"
-subject_prefix = "arXiv 论文日报"
+subject_prefix = "cs.RO 人形机器人日报"
 # Prefer EMAIL_TO (GitHub Secret) for private addresses.
 recipients = []
 send_empty = false

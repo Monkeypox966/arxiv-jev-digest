@@ -129,7 +129,7 @@ uv run arxiv-digest --config profiles/robotics.toml check
 | `email` | `recipients`, `send_empty` | EMAIL_TO 覆盖收件人；默认无匹配不发空邮件 |
 | `retention` | `cache_days` | 缓存保留 30 天；已发送和已处理历史持续保留 |
 | `enrichment` | `enabled`, `timeout_seconds`, `max_pdf_mb` | 获取项目页与机构，HTML 不可用时检查 PDF 前两页；限制文件大小和请求超时 |
-| 根配置 | `compact_summaries` | 默认展示简洁概述和主要结果；false 展示完整六字段摘要 |
+| 根配置 | `compact_summaries` | 默认展示一段贡献摘要；false 展示完整六字段摘要，JSON 始终保留所有字段 |
 
 权重合成后的分数用于排序，尤其 noisy-OR 不应解释为经校准的整体概率；相关性也不代表论文质量。
 

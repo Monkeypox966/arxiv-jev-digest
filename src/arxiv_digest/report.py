@@ -47,12 +47,12 @@ def render(config: Config, picks: list[Pick], now: datetime, stats: dict, *, dem
             *(["公告批次：" + pick.paper.announced] if pick.paper.announced else []),
             f"匹配分数：{pick.decision.score:.1%}",
             f"一句话：{pick.summary.tldr}",
-            f"结果：{pick.summary.results}",
         ]
         if not config.compact_summaries:
             lines += [
                 f"问题：{pick.summary.problem}",
                 f"方法：{pick.summary.method}",
+                f"结果：{pick.summary.results}",
                 f"局限：{pick.summary.limitations}",
             ]
         if pick.details:

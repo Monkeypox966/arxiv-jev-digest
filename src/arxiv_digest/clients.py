@@ -12,7 +12,7 @@ from .config import Config, require_env
 from .http import RateLimiter, ServiceError, request, retry_delay
 from .models import Decision, Paper, Summary
 
-SUMMARY_PROMPT_VERSION = 2
+SUMMARY_PROMPT_VERSION = 3
 
 
 def fingerprint(value) -> str:
@@ -162,6 +162,9 @@ class DeepSeekClient:
             "The tldr must emphasize the contribution and include important task or dataset "
             "scale when explicitly reported. Use neutral academic language, without editorial "
             "judgments such as vague claims. If numerical results are absent, simply say so. "
+            "Keep tldr under 140 Chinese characters (or 70 words in another language). "
+            "Describe empirical feasibility improvements as improvements, not guarantees that "
+            "outputs satisfy physical feasibility, safety, or all real-world constraints. "
             "Use title_zh for the translated title in any output language. "
             "Return only a JSON object with exactly these nonempty string fields: "
             + json.dumps(example, ensure_ascii=False)
