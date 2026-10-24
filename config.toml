@@ -1,14 +1,15 @@
-# Public example profile. Replace these interests with your own.
+# Humanoid robotics profile. Replace these interests with your own.
 timezone = "Asia/Shanghai"
 state_dir = ".state"
 output_dir = "output"
+compact_summaries = true
 
 [arxiv]
 # Category filter only: all fetched papers go through Jev; no keyword prefilter.
-categories = ["cs.AI", "cs.CL", "cs.LG", "cs.CV"]
+categories = ["cs.RO"]
 # "api": rolling, paginated window for recovery after missed runs.
 # "rss": latest announcement only; no historical catch-up.
-source = "api"
+source = "latest"
 lookback_days = 7
 page_size = 200
 # Fail visibly rather than silently truncating the candidate pool.
@@ -28,33 +29,33 @@ timeout_seconds = 60
 attempts = 3
 
 [selection]
-top_k = 30
+top_k = 10
 min_score = 0.60
 exclude_threshold = 0.85
 combine = "max" # or "noisy_or"; composed scores are ranking signals
 
 [[interests]]
-id = "agents"
-label = "大模型智能体"
-text = "Proposes methods for language-model agents that use tools to complete multi-step tasks."
+id = "humanoid"
+label = "人形机器人与全身控制"
+text = "The paper develops or evaluates whole-body behavior, control, locomotion, or loco-manipulation of humanoid or bipedal robots."
 weight = 1.0
 
 [[interests]]
-id = "efficiency"
-label = "推理效率"
-text = "Proposes a method that reduces the inference compute or memory cost of large language models."
-weight = 0.9
+id = "tracking"
+label = "动作追踪与模仿"
+text = "The paper proposes motion tracking, imitation, retargeting, transition synthesis, or teleoperation specifically for humanoid or bipedal robot control."
+weight = 1.0
 
 [[interests]]
-id = "evaluation"
-label = "模型评测"
-text = "Introduces a benchmark or evaluation method for the reliability of large language models."
-weight = 0.9
+id = "motion_methods"
+label = "相关动作感知与规划方法"
+text = "The paper proposes a method for sensing articulated human body motion or generating and planning physically feasible articulated human or humanoid motion."
+weight = 0.75
 
 [[exclusions]]
-id = "medical_imaging"
-label = "医学影像应用"
-text = "The primary application of the paper is medical image analysis."
+id = "unrelated"
+label = "无关应用"
+text = "The primary topic is aerial flight, wheeled driving, surgical manipulation, underwater robotics, or exoskeleton assistance rather than humanoid robot control or human motion sensing."
 
 [deepseek]
 base_url = "https://api.deepseek.com"
@@ -81,3 +82,8 @@ timeout_seconds = 45
 [retention]
 cache_days = 30
 # Sent-paper and reviewed-paper history is kept indefinitely for deduplication.
+
+[enrichment]
+enabled = true
+timeout_seconds = 45
+max_pdf_mb = 25

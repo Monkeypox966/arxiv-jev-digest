@@ -163,15 +163,19 @@ class DeepSeekClient:
             "Return only a JSON object with exactly these nonempty string fields: "
             + json.dumps(example, ensure_ascii=False)
         )
+        return self.complete_json(
+            system, {"title": paper.title, "abstract": paper.abstract}, Summary.model_validate_json
+        )
+
+    def complete_json(self, system: str, context: dict, parser):
+        settings = self.config.deepseek
         body = {
             "model": settings.model,
             "messages": [
                 {"role": "system", "content": system},
                 {
                     "role": "user",
-                    "content": json.dumps(
-                        {"title": paper.title, "abstract": paper.abstract}, ensure_ascii=False
-                    ),
+                    "content": json.dumps(context, ensure_ascii=False),
                 },
             ],
             "response_format": {"type": "json_object"},
@@ -202,9 +206,9 @@ class DeepSeekClient:
                 choice = response.json()["choices"][0]
                 if choice.get("finish_reason") != "stop":
                     raise ValueError("truncated or incomplete completion")
-                return Summary.model_validate_json(choice["message"]["content"])
+                return parser(choice["message"]["content"])
             except (KeyError, IndexError, TypeError, AttributeError, ValueError, ValidationError):
                 if attempt + 1 == settings.attempts:
-                    raise ServiceError("DeepSeek: invalid or incomplete JSON summary") from None
+                    raise ServiceError("DeepSeek: invalid or incomplete JSON response") from None
                 time.sleep(retry_delay(None, attempt))
         raise AssertionError("unreachable")

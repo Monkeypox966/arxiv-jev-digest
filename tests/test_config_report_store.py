@@ -96,4 +96,5 @@ def test_example_check_and_offline_demo(tmp_path, monkeypatch):
 
 
 def test_example_is_valid():
-    assert load_config(ROOT / "config.toml").selection.top_k == 30
+    cfg = load_config(ROOT / "config.toml")
+    assert cfg.arxiv.categories and cfg.interests

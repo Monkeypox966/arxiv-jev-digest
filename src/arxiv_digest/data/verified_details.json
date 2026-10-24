@@ -1,0 +1,291 @@
+{
+  "2610.30540": {
+    "project_url": null,
+    "project_label": "项目网站",
+    "affiliations": [
+      {
+        "institution": "Physical Intelligence Lab, Tongji University",
+        "authors": [
+          "Xiongbo Shi",
+          "Shihang Du",
+          "Zongyou Yu",
+          "Ao Zhou",
+          "Xudong Zhang",
+          "Ziyu Lin",
+          "Haodong Zhang",
+          "Junqiao Zhao",
+          "Guang Chen"
+        ]
+      },
+      {
+        "institution": "Shanghai Innovation Institute",
+        "authors": [
+          "Xiongbo Shi",
+          "Ziyu Lin",
+          "Guang Chen"
+        ]
+      },
+      {
+        "institution": "RobotScale.AI",
+        "authors": [
+          "Xiongbo Shi",
+          "Guang Chen"
+        ]
+      }
+    ],
+    "sources": [
+      "https://arxiv.org/pdf/2610.30540"
+    ],
+    "notes": [
+      "已核对论文页、PDF 全部链接并检索标题，未找到作者项目网站。"
+    ],
+    "reviewed_on": "2026-10-24"
+  },
+  "2610.30817": {
+    "project_url": "https://childtoy.github.io/STAMP-project/",
+    "project_label": "项目网站",
+    "affiliations": [
+      {
+        "institution": "Department of Artificial Intelligence, Korea University",
+        "authors": [
+          "Taehyun Byun",
+          "Taemoon Jeong",
+          "Yoonbyung Chai",
+          "Sungjoon Choi"
+        ]
+      },
+      {
+        "institution": "ROBOTIS",
+        "authors": [
+          "Woojin Wie",
+          "Insu Park"
+        ]
+      },
+      {
+        "institution": "Department of Statistics, Korea University",
+        "authors": [
+          "Kyungjae Lee"
+        ]
+      }
+    ],
+    "sources": [
+      "https://arxiv.org/pdf/2610.30817",
+      "https://childtoy.github.io/STAMP-project/"
+    ],
+    "notes": [],
+    "reviewed_on": "2026-10-24"
+  },
+  "2610.30876": {
+    "project_url": "https://locomanilab.github.io/",
+    "project_label": "项目网站",
+    "affiliations": [
+      {
+        "institution": "Institute of Artificial Intelligence (TeleAI), China Telecom",
+        "authors": [
+          "Dewei Wang",
+          "Jinrui Han",
+          "Jiyuan Shi",
+          "Chenyun Zhang",
+          "Xianbo Lu",
+          "Jiqin Feng",
+          "Chenjia Bai",
+          "Xuelong Li"
+        ]
+      },
+      {
+        "institution": "University of Science and Technology of China",
+        "authors": [
+          "Dewei Wang",
+          "Jiqin Feng"
+        ]
+      },
+      {
+        "institution": "The University of Hong Kong",
+        "authors": [
+          "Jinrui Han",
+          "Ping Luo"
+        ]
+      },
+      {
+        "institution": "Zhejiang University",
+        "authors": [
+          "Xianbo Lu"
+        ]
+      },
+      {
+        "institution": "Shanghai Jiao Tong University",
+        "authors": [
+          "Jiabao Wu"
+        ]
+      },
+      {
+        "institution": "ShanghaiTech University",
+        "authors": [
+          "Jipeng Kong"
+        ]
+      },
+      {
+        "institution": "Gamma Robotics",
+        "authors": [
+          "Chenjia Bai"
+        ]
+      }
+    ],
+    "sources": [
+      "https://arxiv.org/pdf/2610.30876",
+      "https://locomanilab.github.io/"
+    ],
+    "notes": [],
+    "reviewed_on": "2026-10-24"
+  },
+  "2610.31166": {
+    "project_url": "https://memory-before-goal.github.io/",
+    "project_label": "项目网站",
+    "affiliations": [
+      {
+        "institution": "Mohamed bin Zayed University of Artificial Intelligence (MBZUAI)",
+        "authors": [
+          "Chenyuan Chen",
+          "Ran Ding",
+          "Lechen Zhang",
+          "Zewen He",
+          "Yoshihiko Nakamura"
+        ]
+      }
+    ],
+    "sources": [
+      "https://arxiv.org/pdf/2610.31166",
+      "https://memory-before-goal.github.io/"
+    ],
+    "notes": [],
+    "reviewed_on": "2026-10-24"
+  },
+  "2610.31608": {
+    "project_url": "https://leggedrobotics.github.io/ACP/",
+    "project_label": "项目网站",
+    "affiliations": [
+      {
+        "institution": "Robotic Systems Lab, ETH Zurich",
+        "authors": [
+          "Junzhe He",
+          "Chong Zhang",
+          "Clemens Schwarke",
+          "Zewei Zhang",
+          "Kaixian Qu",
+          "Marco Hutter"
+        ]
+      },
+      {
+        "institution": "Department of Electrical and Computer Engineering, National University of Singapore",
+        "authors": [
+          "Kehan Wen"
+        ]
+      },
+      {
+        "institution": "Apple",
+        "authors": [
+          "Siyuan Hu",
+          "Matthias Müller",
+          "Vladlen Koltun"
+        ]
+      },
+      {
+        "institution": "ETH AI Center",
+        "authors": [
+          "Chong Zhang"
+        ]
+      },
+      {
+        "institution": "NVIDIA",
+        "authors": [
+          "Clemens Schwarke"
+        ]
+      }
+    ],
+    "sources": [
+      "https://arxiv.org/pdf/2610.31608",
+      "https://leggedrobotics.github.io/ACP/"
+    ],
+    "notes": [
+      "Kehan Wen 的论文署名说明：原属 ETH Zurich RSL，现属新加坡国立大学。"
+    ],
+    "reviewed_on": "2026-10-24"
+  },
+  "2610.30334": {
+    "project_url": "https://github.com/aralab-unr/MPBRS",
+    "project_label": "作者代码与演示仓库",
+    "affiliations": [
+      {
+        "institution": "Advanced Robotics and Automation (ARA) Lab, Department of Computer Science and Engineering, University of Nevada, Reno",
+        "authors": [
+          "Van Chung Nguyen",
+          "Hung Manh La"
+        ]
+      }
+    ],
+    "sources": [
+      "https://arxiv.org/pdf/2610.30334",
+      "https://github.com/aralab-unr/MPBRS"
+    ],
+    "notes": [],
+    "reviewed_on": "2026-10-24"
+  },
+  "2610.30500": {
+    "project_url": null,
+    "project_label": "项目网站",
+    "affiliations": [
+      {
+        "institution": "Disney Research",
+        "authors": [
+          "Maximilian Stölzle",
+          "David Müller",
+          "Agon Serifi",
+          "Ruben Grandia",
+          "Espen Knoop",
+          "Moritz Bächer"
+        ]
+      },
+      {
+        "institution": "MIT CSAIL",
+        "authors": [
+          "Maximilian Stölzle"
+        ]
+      }
+    ],
+    "sources": [
+      "https://arxiv.org/pdf/2610.30500"
+    ],
+    "notes": [
+      "已检查论文页、PDF 全部链接并检索标题，未找到作者项目网站；未将引用文献的项目链接当作本论文项目页。"
+    ],
+    "reviewed_on": "2026-10-24"
+  },
+  "2610.31156": {
+    "project_url": null,
+    "project_label": "项目网站",
+    "affiliations": [
+      {
+        "institution": "Delft Center for Systems and Control, Delft University of Technology",
+        "authors": [
+          "Ruiyuan Li",
+          "Manon Kok"
+        ]
+      },
+      {
+        "institution": "Department of Biomechanical Engineering, Delft University of Technology",
+        "authors": [
+          "Hassan Osman",
+          "Ajay Seth"
+        ]
+      }
+    ],
+    "sources": [
+      "https://arxiv.org/pdf/2610.31156"
+    ],
+    "notes": [
+      "相关方法补充：人体 IMU 运动感知，并非直接的人形机器人控制论文。",
+      "已检查论文页、PDF 全部链接并检索标题，未找到作者项目网站。"
+    ],
+    "reviewed_on": "2026-10-24"
+  }
+}

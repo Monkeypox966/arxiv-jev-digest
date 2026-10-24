@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from arxiv_digest.config import load_config
+from arxiv_digest.config import ArxivSettings, Config, Interest
 from arxiv_digest.models import Paper, Summary
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,7 +13,32 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def config(tmp_path, monkeypatch):
-    cfg = load_config(ROOT / "config.toml")
+    # Keep behavior tests independent of the user's editable subscription profile.
+    cfg = Config(
+        arxiv=ArxivSettings(categories=["cs.AI", "cs.CL", "cs.LG", "cs.CV"]),
+        interests=[
+            Interest(
+                id="agents", label="Agents", text="Proposes methods for language model agents."
+            ),
+            Interest(
+                id="efficiency",
+                label="Efficiency",
+                text="Reduces language model inference costs.",
+                weight=0.9,
+            ),
+            Interest(
+                id="evaluation",
+                label="Evaluation",
+                text="Introduces language model evaluation methods.",
+                weight=0.9,
+            ),
+        ],
+        exclusions=[
+            Interest(
+                id="medical_imaging", label="Medical", text="The primary topic is medical imaging."
+            )
+        ],
+    )
     cfg.state_dir = tmp_path / "state"
     cfg.output_dir = tmp_path / "output"
     cfg.jev.concurrency = 1

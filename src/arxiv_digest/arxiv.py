@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from html import unescape
@@ -9,6 +10,7 @@ from urllib.parse import unquote, urlsplit
 from xml.etree.ElementTree import ParseError
 
 import httpx
+from bs4 import BeautifulSoup
 from defusedxml import ElementTree as ET
 
 from .config import ArxivSettings
@@ -139,10 +141,79 @@ def category_matches(category: str, allowed: str) -> bool:
     return category == allowed or category.startswith(allowed + ".")
 
 
+def parse_latest_listing(text: str) -> tuple[str, list[str]]:
+    soup = BeautifulSoup(text, "html.parser")
+    heading = soup.find("h3")
+    if heading is None:
+        raise ServiceError("arXiv: latest listing missing an announcement date")
+    label = heading.get_text(" ", strip=True)
+    date_match = re.search(r"[A-Z][a-z]{2}, \d{1,2} [A-Z][a-z]{2} \d{4}", label)
+    count_match = re.search(r"of\s+(\d+)\s+entries", label)
+    if not date_match or not count_match:
+        raise ServiceError("arXiv: unrecognized latest announcement header")
+    date = datetime.strptime(date_match[0], "%a, %d %b %Y").date().isoformat()
+    # arXiv places the date heading INSIDE its <dl>. find_next('dl') would
+    # silently select the following day's papers.
+    listing = heading.find_parent("dl") or heading.find_next("dl")
+    if listing is None:
+        raise ServiceError("arXiv: announcement list missing")
+    ids = [
+        normalize_id("https://arxiv.org" + a["href"])
+        for a in listing.select('dt a[title="Abstract"]')
+    ]
+    if len(ids) != int(count_match[1]) or len(set(ids)) != len(ids):
+        raise ServiceError("arXiv: latest batch is truncated or contains duplicate IDs")
+    return date, ids
+
+
+def fetch_latest(
+    settings: ArxivSettings, client: httpx.Client, limiter: RateLimiter
+) -> list[Paper]:
+    announced: dict[str, str] = {}
+    for category in settings.categories:
+        response = request(
+            client,
+            "GET",
+            f"https://arxiv.org/list/{category}/recent",
+            service="arXiv latest",
+            limiter=limiter,
+            params={"skip": 0, "show": 2000},
+        )
+        date, ids = parse_latest_listing(response.text)
+        for id in ids:
+            announced[id] = max(date, announced.get(id, ""))
+    if len(announced) > settings.max_candidates:
+        raise ServiceError("arXiv: latest batch exceeds max_candidates")
+    papers = []
+    ids = list(announced)
+    for start in range(0, len(ids), settings.page_size):
+        batch = ids[start : start + settings.page_size]
+        response = request(
+            client,
+            "GET",
+            "https://export.arxiv.org/api/query",
+            service="arXiv API",
+            limiter=limiter,
+            params={"id_list": ",".join(batch), "max_results": len(batch)},
+        )
+        page, _, _ = parse_atom(response.text)
+        if {p.id for p in page} != set(batch) or len(page) != len(batch):
+            raise ServiceError("arXiv: missing or unexpected papers in batch metadata")
+        for paper in page:
+            if not settings.include_cross_lists and not any(
+                category_matches(paper.categories[0], c) for c in settings.categories
+            ):
+                continue
+            papers.append(replace(paper, announced=announced[paper.id]))
+    return papers
+
+
 def fetch_papers(
     settings: ArxivSettings, client: httpx.Client, *, now: datetime | None = None
 ) -> list[Paper]:
     limiter = RateLimiter(settings.request_interval_seconds)
+    if settings.source == "latest":
+        return fetch_latest(settings, client, limiter)
     if settings.source == "rss":
         url = "https://rss.arxiv.org/rss/" + "+".join(settings.categories)
         text = request(client, "GET", url, service="arXiv RSS", limiter=limiter).text

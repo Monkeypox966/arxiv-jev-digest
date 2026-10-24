@@ -13,6 +13,7 @@ class Paper:
     authors: list[str]
     categories: list[str]
     published: str
+    announced: str = ""
 
     @property
     def url(self) -> str:
@@ -51,15 +52,55 @@ class Summary(BaseModel):
         return value.strip() if isinstance(value, str) else value
 
 
+class Affiliation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    institution: str = Field(min_length=1, max_length=400)
+    authors: list[str] = Field(default_factory=list)
+
+
+class PaperDetails(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    project_url: str | None = None
+    project_label: str = "项目网站"
+    affiliations: list[Affiliation] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+    reviewed_on: str = ""
+
+    @field_validator("project_url")
+    @classmethod
+    def safe_project_url(cls, value):
+        from urllib.parse import urlsplit
+
+        if value is None:
+            return value
+        parts = urlsplit(value)
+        if (
+            parts.scheme not in {"http", "https"}
+            or not parts.hostname
+            or parts.username
+            or parts.password
+        ):
+            raise ValueError("Expected an HTTP(S) URL without credentials")
+        return value
+
+    @field_validator("sources")
+    @classmethod
+    def safe_sources(cls, values):
+        return [cls.safe_project_url(value) for value in values]
+
+
 @dataclass(frozen=True)
 class Pick:
     paper: Paper
     decision: Decision
     summary: Summary
+    details: PaperDetails | None = None
 
     def to_dict(self) -> dict:
         return {
             "paper": self.paper.to_dict(),
             "decision": self.decision.model_dump(),
             "summary": self.summary.model_dump(),
+            "details": self.details.model_dump() if self.details else None,
         }

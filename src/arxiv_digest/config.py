@@ -23,7 +23,7 @@ class Interest(Settings):
 
 class ArxivSettings(Settings):
     categories: list[str] = Field(min_length=1)
-    source: Literal["api", "rss"] = "api"
+    source: Literal["api", "rss", "latest"] = "api"
     lookback_days: int = Field(default=7, ge=1, le=31)
     page_size: int = Field(default=200, ge=1, le=2000)
     max_candidates: int = Field(default=10000, ge=1, le=30000)
@@ -124,10 +124,17 @@ class RetentionSettings(Settings):
     cache_days: int = Field(default=30, ge=7, le=365)
 
 
+class EnrichmentSettings(Settings):
+    enabled: bool = False
+    timeout_seconds: float = Field(default=45, gt=0, le=120)
+    max_pdf_mb: int = Field(default=25, ge=1, le=50)
+
+
 class Config(Settings):
     timezone: str = "Asia/Shanghai"
     state_dir: Path = Path(".state")
     output_dir: Path = Path("output")
+    compact_summaries: bool = False
     arxiv: ArxivSettings
     jev: JevSettings = Field(default_factory=JevSettings)
     selection: SelectionSettings = Field(default_factory=SelectionSettings)
@@ -136,6 +143,7 @@ class Config(Settings):
     deepseek: DeepSeekSettings = Field(default_factory=DeepSeekSettings)
     email: EmailSettings = Field(default_factory=EmailSettings)
     retention: RetentionSettings = Field(default_factory=RetentionSettings)
+    enrichment: EnrichmentSettings = Field(default_factory=EnrichmentSettings)
 
     @field_validator("timezone")
     @classmethod

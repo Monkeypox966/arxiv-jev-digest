@@ -18,9 +18,10 @@ from .clients import (
     summary_key,
 )
 from .config import Config, recipients, validate_credentials
+from .enrichment import Enricher
 from .http import ServiceError
 from .mailer import SMTPMailer, build_message
-from .models import Decision, Pick, Summary
+from .models import Decision, PaperDetails, Pick, Summary
 from .report import write_report
 from .store import Store, recipient_key
 
@@ -142,6 +143,17 @@ def run(
             store.cache("summary", summary_key(config, paper), summary.model_dump())
             if completed % 5 == 0 or completed == len(unsummarized):
                 LOG.info("DeepSeek summary progress: %d/%d", completed, len(unsummarized))
+        details = {}
+        if config.enrichment.enabled and summary_papers:
+            enricher = Enricher(config, client, deepseek)
+            for paper in summary_papers.values():
+                key = enricher.key(paper)
+                cached = store.cached("details", key)
+                detail = PaperDetails.model_validate(cached) if cached else enricher.enrich(paper)
+                details[paper.id] = detail
+                if not cached and detail.sources:
+                    store.cache("details", key, detail.model_dump())
+            LOG.info("Enriched project and affiliation metadata for %d papers", len(details))
         stats = {
             "fetched": len(papers),
             "new_candidates": len(wanted),
@@ -150,9 +162,13 @@ def run(
             "selected_unique": len(summary_papers),
             "emails_sent": 0,
             "dry_run": dry_run,
+            "announcement_dates": sorted({p.announced for p in papers if p.announced}),
         }
         for index, address in enumerate(targets, 1):
-            picks = [Pick(p, decisions[p.id], summaries[p.id]) for p in selected[address]]
+            picks = [
+                Pick(p, decisions[p.id], summaries[p.id], details.get(p.id))
+                for p in selected[address]
+            ]
             directory = run_dir if len(targets) == 1 else run_dir / f"digest-{index}"
             subject, text, html = write_report(
                 directory,
