@@ -13,6 +13,7 @@ from arxiv_digest.enrichment import (
     html_evidence,
     html_mapping_unclear,
     merge_details,
+    reconcile_pdf_affiliations,
 )
 from arxiv_digest.http import ServiceError
 from arxiv_digest.models import Affiliation, PaperDetails
@@ -414,3 +415,165 @@ def test_merge_preserves_each_source_diagnostic_without_contradictory_global_not
         paper.url: ["No affiliations appear in this source.", "Abs comments inspected."],
         paper.pdf_url: ["No project URL appears in this PDF."],
     }
+
+
+def numbered_details(paper, rows):
+    return source_details(paper, paper.metadata_pdf_url, affiliations=rows)
+
+
+def test_explicit_pdf_markers_restore_all_seven_beyondmimic_authors(paper):
+    authors = [
+        "Qiayuan Liao",
+        "Takara E. Truong",
+        "Xiaoyu Huang",
+        "Yuman Gao",
+        "Guy Tevet",
+        "Koushil Sreenath",
+        "C. Karen Liu",
+    ]
+    paper = replace(paper, authors=authors)
+    header = (
+        "PDF page 1:\nBeyondMimic\n"
+        "Qiayuan Liao1∗†, Takara E. Truong2†, Xiaoyu Huang1†,\n"
+        "Yuman Gao1, Guy Tevet2, Koushil Sreenath1‡, C. Karen Liu2‡\n"
+        "1University of California, Berkeley, CA 94720, USA.\n"
+        "2Stanford University, Stanford, CA 94305, USA."
+    )
+    value = numbered_details(
+        paper,
+        [
+            ("University of California, Berkeley", [authors[0], authors[2]]),
+            ("Stanford University", [authors[1]]),
+        ],
+    )
+    result = reconcile_pdf_affiliations(value, paper, header, paper.metadata_pdf_url)
+    assert result.affiliations[0].authors == [authors[i] for i in (0, 2, 3, 5)]
+    assert result.affiliations[1].authors == [authors[i] for i in (1, 4, 6)]
+    assert result.completeness(paper)["affiliation_coverage"] == 1
+    assert all(a.source == paper.metadata_pdf_url for a in result.affiliations)
+    assert len(value.affiliations[0].authors) == 2
+
+
+def test_explicit_pdf_marker_list_preserves_li_yi_dual_affiliation(paper):
+    paper = replace(paper, authors=["He Wang", "Li Yi"])
+    header = (
+        "PDF page 1:\nHe Wang 2,4,†,Li Yi 1,5,†\n"
+        "1Tsinghua University2Galbot Inc. 3Shanghai Jiao Tong University"
+        "4Peking University 5Shanghai Qi Zhi\nInstitute"
+    )
+    value = numbered_details(
+        paper,
+        [
+            ("Tsinghua University", []),
+            ("Galbot Inc.", ["He Wang"]),
+            ("Peking University", ["He Wang"]),
+            ("Shanghai Qi Zhi Institute", ["Li Yi"]),
+        ],
+    )
+    result = reconcile_pdf_affiliations(value, paper, header, paper.metadata_pdf_url)
+    mapping = {a.institution: a.authors for a in result.affiliations}
+    assert mapping["Tsinghua University"] == mapping["Shanghai Qi Zhi Institute"] == ["Li Yi"]
+    assert "Shanghai Jiao Tong University" not in mapping
+
+
+def test_explicit_pdf_marker_reconciliation_does_not_inherit_for_unmarked_yuchen(paper):
+    paper = replace(paper, authors=["Yining Wang", "Yuchen Liu", "Guanjun Liu"])
+    header = (
+        "PDF page 1:\nYining Wang2, Yuchen Liu, Guanjun Liu1\n"
+        "1University of Science and Technology of China\n2Unisound AI Technology Co., Ltd"
+    )
+    value = numbered_details(
+        paper,
+        [
+            ("University of Science and Technology of China", ["Guanjun Liu"]),
+            ("Unisound AI Technology Co., Ltd", ["Yining Wang", "Yuchen Liu"]),
+        ],
+    )
+    result = reconcile_pdf_affiliations(value, paper, header, paper.metadata_pdf_url)
+    assert result.affiliations[1].authors == ["Yining Wang"]
+    assert result.completeness(paper)["missing_authors"] == ["Yuchen Liu"]
+
+
+def test_pdf_year_is_not_a_two_digit_marker_or_inherited_next_author_marker(paper):
+    paper = replace(paper, authors=["Alice Author", "Bob Author", "Carol Author"])
+    header = (
+        "PDF page 1:\nAlice Author1, Bob Author2025, Carol Author\n"
+        "1Alpha University20Beta University"
+    )
+    value = numbered_details(
+        paper,
+        [
+            ("Alpha University", ["Carol Author"]),
+            ("Beta University", ["Bob Author"]),
+        ],
+    )
+    result = reconcile_pdf_affiliations(value, paper, header, paper.metadata_pdf_url)
+    assert result.affiliations[0].authors == ["Alice Author"]
+    assert result.affiliations[1].authors == []
+
+
+@pytest.mark.parametrize(
+    "institutions", ["1Alpha University1Beta University", "1Alpha University2Alpha University"]
+)
+def test_conflicting_pdf_institution_numbers_are_not_guessed(paper, institutions):
+    paper = replace(paper, authors=["Alice Author", "Bob Author"])
+    header = "PDF page 1:\nAlice Author1, Bob Author2\n" + institutions
+    rows = [("Alpha University", paper.authors)]
+    if "Beta" in institutions:
+        rows.append(("Beta University", paper.authors))
+    result = reconcile_pdf_affiliations(
+        numbered_details(paper, rows), paper, header, paper.metadata_pdf_url
+    )
+    assert all(not a.authors for a in result.affiliations)
+
+
+def test_duplicate_author_with_conflicting_markers_is_left_unmapped(paper):
+    paper = replace(paper, authors=["Alice Author", "Bob Author"])
+    header = (
+        "PDF page 1:\nAlice Author1, Bob Author2, Alice Author2\n1Alpha University2Beta University"
+    )
+    result = reconcile_pdf_affiliations(
+        numbered_details(paper, [("Alpha University", []), ("Beta University", paper.authors)]),
+        paper,
+        header,
+        paper.metadata_pdf_url,
+    )
+    assert result.affiliations[0].authors == []
+    assert result.affiliations[1].authors == ["Bob Author"]
+
+
+def test_unknown_pdf_marker_does_not_borrow_a_known_institution(paper):
+    paper = replace(paper, authors=["Alice Author", "Bob Author"])
+    header = "PDF page 1:\nAlice Author7, Bob Author1\n1Alpha University2Beta University"
+    result = reconcile_pdf_affiliations(
+        numbered_details(paper, [("Alpha University", ["Alice Author"]), ("Beta University", [])]),
+        paper,
+        header,
+        paper.metadata_pdf_url,
+    )
+    assert result.affiliations[0].authors == ["Bob Author"]
+    assert all("Alice Author" not in a.authors for a in result.affiliations)
+    assert any(
+        '"unknown_markers": ["7"]' in note for note in result.source_diagnostics[paper.pdf_url]
+    )
+
+
+def test_pdf_reconciliation_is_first_page_only_and_does_not_change_project_data(paper):
+    paper = replace(paper, authors=["Alice Author", "Bob Author"])
+    value = numbered_details(paper, [("Alpha University", []), ("Beta University", [])])
+    header = (
+        "PDF page 1:\nAlice Author1, Bob Author2\nPDF page 2:\n1Alpha University2Beta University"
+    )
+    assert reconcile_pdf_affiliations(value, paper, header, paper.metadata_pdf_url) == value
+    project_header = "Alice Author1, Bob Author2\n1Alpha University2Beta University"
+    assert reconcile_pdf_affiliations(value, paper, project_header, PROJECT) == value
+
+
+def test_pdf_reconciliation_does_not_add_an_entire_missing_institution(paper):
+    paper = replace(paper, authors=["Alice Author", "Bob Author"])
+    value = numbered_details(paper, [("Alpha University", [])])
+    header = "PDF page 1:\nAlice Author1, Bob Author2\n1Alpha University2Beta University"
+    result = reconcile_pdf_affiliations(value, paper, header, paper.metadata_pdf_url)
+    assert len(result.affiliations) == 1
+    assert result.affiliations[0].authors == ["Alice Author"]
+    assert result.completeness(paper)["missing_authors"] == ["Bob Author"]

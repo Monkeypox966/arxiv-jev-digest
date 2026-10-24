@@ -459,3 +459,31 @@ def test_cli_checkpoint_reset_is_scoped_and_preserves_delivery_history(config, t
         assert store.db.execute("SELECT status FROM outbox WHERE id=?", (delivery,)).fetchone() == (
             "sent",
         )
+
+
+def test_deferred_papers_do_not_bypass_a_changed_category_filter(config, paper, monkeypatch):
+    from dataclasses import replace
+
+    config.arxiv.categories = ["cs.CL"]
+    config.enrichment.enabled = True
+    robot_paper = replace(paper, categories=["cs.RO"])
+    with Store(config.state_dir) as store:
+        store.mark_reviewed(recipient_key("reader@example.com"), profile_key(config), [paper.id])
+        store.queue_metadata_retry(
+            recipient_key("reader@example.com"),
+            profile_key(config),
+            robot_paper.to_dict(),
+            delay_hours=1,
+            max_attempts=3,
+            now=NOW - timedelta(days=1),
+        )
+    monkeypatch.setattr("arxiv_digest.pipeline.fetch_papers", lambda *_args, **_kwargs: [])
+
+    def unexpected(request):
+        raise AssertionError(
+            f"Old out-of-category paper must not trigger a model call: {request.url}"
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(unexpected)) as client:
+        result = run(config, client, dry_run=True, now=NOW)
+    assert result["new_candidates"] == result["metadata_retries"] == 0

@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-from .arxiv import fetch_papers
+from .arxiv import category_matches, fetch_papers
 from .clients import (
     DeepSeekClient,
     JevClient,
@@ -217,6 +217,17 @@ def _run(
                     limit=config.enrichment.retry_limit_per_run,
                 ):
                     paper = papers.get(raw["id"]) or Paper(**raw)
+                    categories = (
+                        paper.categories
+                        if config.arxiv.include_cross_lists
+                        else paper.categories[:1]
+                    )
+                    if not any(
+                        category_matches(category, allowed)
+                        for category in categories
+                        for allowed in config.arxiv.categories
+                    ):
+                        continue
                     pool[paper.id] = paper
                     papers[paper.id] = paper
                     retried.add(paper.id)

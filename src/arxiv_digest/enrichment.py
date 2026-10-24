@@ -240,6 +240,105 @@ def project_identity(paper: Paper, text: str) -> bool:
     )
 
 
+def reconcile_pdf_affiliations(
+    details: PaperDetails, paper: Paper, document: str, source: str
+) -> PaperDetails:
+    """Reconcile only explicit numeric header evidence, never infer institutions."""
+    if source != paper.metadata_pdf_url:
+        return details
+    header = document.split("\nPDF page 2:", 1)[0].split("\nLink contexts:", 1)[0]
+    header = re.sub(r"^PDF page 1:\s*", "", header)[:5000]
+    header = normalize_text(header)
+    institutions: dict[str, set[str]] = {}
+    starts = []
+    for affiliation in details.affiliations:
+        name = normalize_text(affiliation.institution)
+        matches = list(re.finditer(r"(?<![\d.,])([1-9]\d?)\s*" + re.escape(name), header))
+        matches = [
+            match
+            for match in matches
+            if match.end() == len(header) or not header[match.end()].isalpha()
+        ]
+        if matches:
+            institutions.setdefault(name, set()).update(match[1] for match in matches)
+            starts.extend(match.start() for match in matches)
+    if not starts:
+        return details
+    number_names: dict[str, set[str]] = {}
+    for name, numbers in institutions.items():
+        for number in numbers:
+            number_names.setdefault(number, set()).add(name)
+    unique = {
+        name: next(iter(numbers))
+        for name, numbers in institutions.items()
+        if len(numbers) == 1 and len(number_names[next(iter(numbers))]) == 1
+    }
+    author_region = header[: min(starts)]
+    positions = {}
+    for author in paper.authors:
+        pattern = re.escape(normalize_text(author)).replace(r"\ ", r"\s*")
+        positions[author] = list(re.finditer(r"(?<![^\W\d_])" + pattern, author_region))
+    markers: dict[str, list[str]] = {}
+    ambiguous = []
+    observed_numeric = False
+    for author, occurrences in positions.items():
+        values = []
+        for occurrence in occurrences:
+            suffix = author_region[occurrence.end() : occurrence.end() + 64]
+            run = re.match(r"[\s\d,*∗†‡]+", suffix)
+            raw = run[0] if run else ""
+            # Whitespace is not a numeric-list delimiter. Reject years and
+            # truncated numbers rather than interpreting 2025 as marker 20.
+            if re.search(r"\d\s+\d", raw):
+                values.append([])
+                continue
+            digits = re.findall(r"\d+", raw)
+            valid = digits if all(re.fullmatch(r"[1-9]\d?", value) for value in digits) else []
+            values.append(valid)
+            observed_numeric = observed_numeric or bool(valid)
+        overlapping = any(
+            other != author
+            and max(occurrence.start(), match.start()) < min(occurrence.end(), match.end())
+            for occurrence in occurrences
+            for other, matches in positions.items()
+            for match in matches
+        )
+        if len(occurrences) != 1 or overlapping:
+            ambiguous.append(author)
+            markers[author] = []
+        else:
+            markers[author] = list(dict.fromkeys(values[0]))
+    if not observed_numeric:
+        return details
+    result = details.model_copy(deep=True)
+    for affiliation in result.affiliations:
+        name = normalize_text(affiliation.institution)
+        if name in institutions:
+            number = unique.get(name)
+            affiliation.authors = [
+                author for author in paper.authors if number and number in markers[author]
+            ]
+            affiliation.source = source
+    unknown = sorted(
+        {number for numbers in markers.values() for number in numbers} - set(number_names)
+    )
+    result.source_diagnostics.setdefault(source, []).append(
+        "Explicit PDF numeric-marker reconciliation: "
+        + json.dumps(
+            {
+                "author_markers": markers,
+                "institution_markers": unique,
+                "ambiguous_authors": ambiguous,
+                "unknown_markers": unknown,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    result.notes.append("PDF 作者机构已按明确数字标号核对；无标号或歧义对应未据此补猜。")
+    return result
+
+
 def classify_details(
     details: PaperDetails, paper: Paper, failures: list[str], *, checked: bool
 ) -> PaperDetails:
@@ -282,7 +381,7 @@ class Enricher:
     def key(self, paper: Paper) -> str:
         return fingerprint(
             [
-                "details-v4-ambiguous-html-provenance",
+                "details-v5-explicit-pdf-markers",
                 paper.id,
                 paper.title,
                 paper.authors,
@@ -434,6 +533,8 @@ class Enricher:
             affiliation.source = source
         details.source_diagnostics = {source: list(details.notes)} if details.notes else {}
         details.notes = ["作者机构由论文元数据自动提取；请以来源页的署名为准。"]
+        if source == paper.metadata_pdf_url:
+            details = reconcile_pdf_affiliations(details, paper, text, source)
         return details
 
     def enrich(self, paper: Paper) -> PaperDetails:
