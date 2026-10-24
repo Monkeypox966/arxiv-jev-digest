@@ -1,0 +1,83 @@
+# Public example profile. Replace these interests with your own.
+timezone = "Asia/Shanghai"
+state_dir = ".state"
+output_dir = "output"
+
+[arxiv]
+# Category filter only: all fetched papers go through Jev; no keyword prefilter.
+categories = ["cs.AI", "cs.CL", "cs.LG", "cs.CV"]
+# "api": rolling, paginated window for recovery after missed runs.
+# "rss": latest announcement only; no historical catch-up.
+source = "api"
+lookback_days = 7
+page_size = 200
+# Fail visibly rather than silently truncating the candidate pool.
+max_candidates = 10000
+request_interval_seconds = 3.1
+include_cross_lists = true
+
+[jev]
+backend = "typesafe" # or "openrouter" with OPENROUTER_API_KEY
+model = "jev-1.14.0"
+# For OpenRouter: endpoint = "https://openrouter.ai/api/alpha/decisions"
+# model = "typesafe/jev-1.14"
+endpoint = "https://api.typesafe.ai/v1/systemone"
+concurrency = 4
+requests_per_minute = 120
+timeout_seconds = 60
+attempts = 3
+
+[selection]
+top_k = 30
+min_score = 0.60
+exclude_threshold = 0.85
+combine = "max" # or "noisy_or"; composed scores are ranking signals
+
+[[interests]]
+id = "agents"
+label = "大模型智能体"
+text = "Proposes methods for language-model agents that use tools to complete multi-step tasks."
+weight = 1.0
+
+[[interests]]
+id = "efficiency"
+label = "推理效率"
+text = "Proposes a method that reduces the inference compute or memory cost of large language models."
+weight = 0.9
+
+[[interests]]
+id = "evaluation"
+label = "模型评测"
+text = "Introduces a benchmark or evaluation method for the reliability of large language models."
+weight = 0.9
+
+[[exclusions]]
+id = "medical_imaging"
+label = "医学影像应用"
+text = "The primary application of the paper is medical image analysis."
+
+[deepseek]
+base_url = "https://api.deepseek.com"
+model = "deepseek-flash"
+language = "简体中文"
+concurrency = 3
+requests_per_minute = 60
+max_tokens = 1800
+timeout_seconds = 120
+attempts = 3
+disable_thinking = true # Set false for a provider that does not accept this field.
+
+[email]
+host = "smtp.example.com" # Set your provider's SMTP host.
+port = 465
+security = "ssl" # "starttls" usually uses port 587
+sender_name = "arXiv Paper Digest"
+subject_prefix = "arXiv 论文日报"
+# Prefer EMAIL_TO (GitHub Secret) for private addresses.
+recipients = []
+send_empty = false
+timeout_seconds = 45
+
+[retention]
+cache_days = 30
+# Sent-paper and reviewed-paper history is kept indefinitely for deduplication.

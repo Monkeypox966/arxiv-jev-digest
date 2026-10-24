@@ -1,0 +1,83 @@
+name: Daily arXiv Digest
+
+on:
+  schedule:
+    # 00:17 UTC = 08:17 Asia/Shanghai; edit this cron to change delivery time.
+    - cron: '17 0 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Preview uses real APIs but sends no email; send enables delivery.
+        type: choice
+        options: [preview, send, resolve_sent, resolve_retry]
+        default: preview
+      delivery_id:
+        description: Only for resolve modes; check the recipient inbox first.
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-arxiv-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      UV_NO_PROGRESS: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+      - name: Install locked dependencies
+        run: uv sync --locked --no-dev
+      - name: Validate configuration
+        run: uv run --locked --no-dev arxiv-digest check
+      - name: Restore state
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run --locked --no-dev python .github/scripts/state.py load
+      - name: Run digest or resolve delivery
+        env:
+          RUN_MODE: ${{ inputs.mode || 'send' }}
+          DELIVERY_ID: ${{ inputs.delivery_id }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+        shell: bash
+        run: |
+          case "$RUN_MODE" in
+            preview) uv run --locked --no-dev arxiv-digest run --dry-run ;;
+            send) uv run --locked --no-dev arxiv-digest run ;;
+            resolve_sent) uv run --locked --no-dev arxiv-digest resolve "$DELIVERY_ID" --outcome sent ;;
+            resolve_retry) uv run --locked --no-dev arxiv-digest resolve "$DELIVERY_ID" --outcome retry ;;
+            *) exit 2 ;;
+          esac
+      - name: Persist state even after a processing failure
+        if: ${{ always() && steps.restore.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run --locked --no-dev python .github/scripts/state.py save
+      - name: Upload reports and recovery database
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            output/
+            .state/digest.sqlite3
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 14
