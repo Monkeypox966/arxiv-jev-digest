@@ -55,6 +55,8 @@ RSS 模式仅最近一次公告，适合低调用量的当天订阅；不适合�
 
 需要单独核查时选择 `inspect` 并给出 1–5 个 ID，下载 `metadata.json`。该模式使用真实 DeepSeek、保留状态和覆盖率、更新缓存，但不做 JEV 判断、不发送、不推进公告或已处理历史。CLI 对应 `inspect --refresh 2508.08241 2606.03985`。
 
+单独验证邮箱选择 `delivery_test`（CLI `test-email`），会明确发一封联调测试邮件，使用与日报相同的认证、远端 pending 保存、SMTP 与确认流程。测试 outbox 不含论文 ID，所以不会改变真实论文的已发送/已处理历史；现有 pending 仍会阻止测试，不能用它绕过待确认记录。
+
 ## 预算与健康信息
 
 预算按每次真实 HTTP 尝试计数，包含网络重试和 JSON 输出重试。JEV 筛选、DeepSeek 机构提取、摘要分别统计；命中本地缓存不计调用。`usage.json` 中 reported tokens 是服务商实际返回量，budget tokens 是实际量或未知时保留的估计，不能把未知当零。

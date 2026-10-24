@@ -104,6 +104,7 @@ class PaperDetails(BaseModel):
     reviewed_on: str = ""
     reviewed_version: str = ""
     failed_sources: list[str] = Field(default_factory=list)
+    source_diagnostics: dict[str, list[str]] = Field(default_factory=dict)
 
     def completeness(self, paper: Paper) -> dict:
         authors = set(paper.authors)

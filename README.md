@@ -87,6 +87,8 @@ OpenRouter 的 Jev 使用 decisions 接口，不能使用普通 chat/completions
 
 单独核查论文链接与机构可选择 `inspect`，在 `paper_ids` 填 1–5 个空格分隔的 arXiv ID，例如 `2605.07315 2508.08241 2606.03985`。这会真实调用元数据提取模型，生成 `metadata.json`，不调用 JEV 筛选，也不发送邮件。
 
+只验证邮箱可选择 `delivery_test`：会真实发送一封标题明确的投递联调邮件，不调用模型，不清除或改动真实论文发送历史，并使用同样的远程 pending 保护。CLI 为 `test-email`。
+
 之后每天自动执行发送模式。默认每天北京时间 **09:30** 启动，处理完成后发送邮件。修改 [`.github/workflows/daily.yml`](.github/workflows/daily.yml) 的 `cron` 可调整启动时间，表达式使用 UTC，当前的 `30 1 * * *` 对应北京时间 09:30。配置中的 `timezone` 只控制报告显示，不会改变 Actions 调度。
 
 GitHub 调度可能延迟；公共仓库长期没有活动也可能停用定时工作流。详见 [GitHub schedule 文档](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)。

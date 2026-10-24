@@ -109,6 +109,7 @@ def checked_details(raw: str, paper: Paper, document: str, candidates: list[str]
     details.project_status = "unknown"
     details.affiliation_status = "unknown"
     details.failed_sources = []
+    details.source_diagnostics = {}
     details.project_label = "项目网站 / 代码"
     return details
 
@@ -161,11 +162,35 @@ def code_repository(url: str | None) -> bool:
     )
 
 
-def html_mapping_unclear(html: str) -> bool:
+def html_mapping_unclear(html: str, paper: Paper | None = None) -> bool:
     soup = BeautifulSoup(html, "html.parser")
     if re.search(r"Affiliation:\s*\[", soup.get_text(" ", strip=True)):
         return True
     creators = soup.select(".ltx_creator.ltx_role_author")
+    if paper:
+        # A conversion can concatenate multiple authors inside one name block
+        # while retaining a single affiliation label (e.g. LaTER v1). Matching
+        # non-overlapping name spans avoids treating Yu Li inside Mingyu Li as
+        # two authors, while still detecting adjacent unseparated names.
+        for creator in creators:
+            names = creator.select(".ltx_personname")
+            name_text = (
+                " ".join(name.get_text(" ", strip=True) for name in names)
+                if names
+                else creator.get_text(" ", strip=True)
+            )
+            compact = re.sub(r"[\W_]+", "", normalize_text(name_text))
+            spans = []
+            for author in paper.authors:
+                author_text = re.sub(r"[\W_]+", "", normalize_text(author))
+                if author_text and (offset := compact.find(author_text)) >= 0:
+                    spans.append((offset, offset + len(author_text)))
+            if any(
+                first[1] <= second[0] or second[1] <= first[0]
+                for index, first in enumerate(spans)
+                for second in spans[index + 1 :]
+            ):
+                return True
     return any(
         not creator.select_one("sup, .ltx_contact, .ltx_affiliation, .ltx_address")
         for creator in creators
@@ -199,6 +224,10 @@ def merge_details(
             result.affiliations.append(value)
     result.sources = list(dict.fromkeys(current.sources + incoming.sources))
     result.notes = list(dict.fromkeys(result.notes + incoming.notes))
+    for source, diagnostics in incoming.source_diagnostics.items():
+        result.source_diagnostics[source] = list(
+            dict.fromkeys(result.source_diagnostics.get(source, []) + diagnostics)
+        )
     return result
 
 
@@ -253,7 +282,7 @@ class Enricher:
     def key(self, paper: Paper) -> str:
         return fingerprint(
             [
-                "details-v3-state-and-revision",
+                "details-v4-ambiguous-html-provenance",
                 paper.id,
                 paper.title,
                 paper.authors,
@@ -376,7 +405,13 @@ class Enricher:
             "affiliations (a list of {institution, authors}), and notes (a list of strings). "
             "Quote institution names verbatim from the document; preserve English names. "
             "Assign an author only when superscripts or explicit text establish the mapping. "
+            "For PDF text, every assigned author must have an explicit affiliation marker "
+            "that matches an institution marker, or a clear author-specific affiliation statement. "
+            "An author with no marker must remain unmapped; NEVER inherit the affiliation "
+            "of an adjacent author, an author group, or the nearest institution line. "
             "When HTML conversion loses superscripts, omit ambiguous author mappings. "
+            "Concatenated or merged author names sharing one HTML affiliation block are "
+            "ambiguous and must not be assigned that institution. "
             "An institution logo, sponsor, collaborator, citation, or author email domain alone "
             "does not establish an author affiliation. Never assign all authors to all logos. "
             "Author names must exactly match supplied authors. Never infer from author reputation. "
@@ -397,7 +432,8 @@ class Enricher:
         )
         for affiliation in details.affiliations:
             affiliation.source = source
-        details.notes.append("作者机构由论文元数据自动提取；请以来源页的署名为准。")
+        details.source_diagnostics = {source: list(details.notes)} if details.notes else {}
+        details.notes = ["作者机构由论文元数据自动提取；请以来源页的署名为准。"]
         return details
 
     def enrich(self, paper: Paper) -> PaperDetails:
@@ -429,11 +465,21 @@ class Enricher:
                 text, urls = parse(html)
                 checked = True
                 if parse is html_evidence:
-                    check_pdf_mapping = html_mapping_unclear(html)
+                    check_pdf_mapping = html_mapping_unclear(html, paper)
                 if urls or parse is html_evidence:
-                    result = merge_details(
-                        result, self.extract(paper, text, urls, source), fill_only=curated
-                    )
+                    incoming = self.extract(paper, text, urls, source)
+                    if parse is html_evidence and check_pdf_mapping:
+                        discarded = len(incoming.affiliations)
+                        incoming.affiliations = []
+                        incoming.affiliation_status = "unknown"
+                        incoming.source_diagnostics.setdefault(source, []).append(
+                            "Discarded generated affiliation mappings because the HTML author "
+                            f"structure is ambiguous ({discarded} institution entries)."
+                        )
+                        incoming.notes.append(
+                            "HTML 作者机构标记不可靠，该来源的机构映射未用于判别。"
+                        )
+                    result = merge_details(result, incoming, fill_only=curated)
             except SOURCE_ERRORS as exc:
                 if isinstance(exc, ServiceError) and getattr(exc, "fatal", False):
                     raise

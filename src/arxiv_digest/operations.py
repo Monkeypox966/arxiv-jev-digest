@@ -21,7 +21,7 @@ from .enrichment import Enricher
 from .http import ServiceError
 from .mailer import SMTPMailer, build_message
 from .models import PaperDetails
-from .store import Store
+from .store import Store, recipient_key
 from .usage import UsageTracker
 
 
@@ -123,6 +123,67 @@ def latest_health(config: Config) -> dict:
     if not paths:
         return {"status": "unavailable", "error": "No operation health report was produced"}
     return json.loads(max(paths, key=lambda path: path.stat().st_mtime_ns).read_text("utf-8"))
+
+
+def test_delivery(config: Config, *, outbox_hook=None, mailer_factory=SMTPMailer) -> dict:
+    """Explicit SMTP test: no model calls and no real-paper history mutation."""
+    addresses = recipients(config)
+    if not addresses:
+        raise ValueError("Delivery test requires EMAIL_TO")
+    now = datetime.now(ZoneInfo(config.timezone))
+    directory = config.output_dir / (
+        now.strftime("%Y%m%d-%H%M%S-delivery-test-") + uuid.uuid4().hex[:8]
+    )
+    directory.mkdir(parents=True, exist_ok=True)
+    usage = UsageTracker(config.budget)
+    health = {"schema_version": 1, "operation": "delivery_test", "started_at": now.isoformat()}
+    sent = 0
+    try:
+        with Store(config.state_dir) as store:
+            for address in addresses:
+                key = recipient_key(address)
+                if store.pending(key):
+                    raise ServiceError("Resolve pending deliveries before running an SMTP test")
+                with mailer_factory(config) as mailer:
+                    delivery = store.prepare(key, "delivery-test-v1", [], [])
+                    if outbox_hook:
+                        outbox_hook()
+                    subject = config.email.subject_prefix + " · 投递联调测试"
+                    text = (
+                        "这是一封投递联调测试邮件，用于验证 QQ SMTP、发送前状态保存和确认流程。\n"
+                        "本次没有调用论文模型，也没有清除或改写真实论文的发送历史。\n"
+                        "测试时间：" + now.isoformat() + "\n"
+                    )
+                    import html
+
+                    mailer.send(
+                        build_message(
+                            config,
+                            address,
+                            delivery,
+                            subject,
+                            text,
+                            "<pre>" + html.escape(text) + "</pre>",
+                            now,
+                        )
+                    )
+                    store.resolve(delivery, "sent")
+                    sent += 1
+        result = {"emails_sent": sent, "test_delivery": True, "output_dir": str(directory)}
+        health.update(status="success", stats=result)
+        return result
+    except BaseException as exc:
+        health.update(
+            status="failed",
+            error_type=type(exc).__name__,
+            error=str(exc) if isinstance(exc, ServiceError) else type(exc).__name__,
+        )
+        raise
+    finally:
+        health["usage"] = usage.snapshot()
+        health["finished_at"] = datetime.now(ZoneInfo(config.timezone)).isoformat()
+        for name, value in (("health.json", health), ("usage.json", usage.snapshot())):
+            (directory / name).write_text(json.dumps(value, ensure_ascii=False, indent=2), "utf-8")
 
 
 def actions_summary(config: Config) -> dict:

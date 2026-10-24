@@ -11,6 +11,8 @@ from arxiv_digest.enrichment import (
     checked_details,
     classify_details,
     html_evidence,
+    html_mapping_unclear,
+    merge_details,
 )
 from arxiv_digest.http import ServiceError
 from arxiv_digest.models import Affiliation, PaperDetails
@@ -70,6 +72,7 @@ def test_model_cannot_forge_verification_status_or_sources(paper):
         reviewed_on="2099-01-01",
         reviewed_version="v99",
         failed_sources=["https://forged.example/failure"],
+        source_diagnostics={"https://forged.example/": ["This was independently verified"]},
     )
     value = checked_details(
         json.dumps(data), paper, "A. Author is with Example University.", [PROJECT]
@@ -79,6 +82,7 @@ def test_model_cannot_forge_verification_status_or_sources(paper):
     assert value.project_source is None
     assert value.affiliations[0].source is None
     assert value.reviewed_on == value.reviewed_version == ""
+    assert value.source_diagnostics == {}
 
 
 def test_mapped_author_must_appear_in_supplied_document(paper):
@@ -288,3 +292,125 @@ def test_image_only_pdf_is_unavailable_instead_of_confirmed_absence(config, pape
 def test_empty_or_script_only_document_cannot_be_a_successful_negative(parse, html):
     with pytest.raises(ValueError, match="no readable metadata"):
         parse(html)
+
+
+def later_merged_author_html():
+    # Shape observed in arXiv 2605.07315v1: one ltx_personname concatenates
+    # Yining Wang and Yuchen Liu but carries one affiliation label.
+    return (
+        '<article><span class="ltx_creator ltx_role_author">'
+        '<span class="ltx_personname">Yining WangYuchen Liu</span>'
+        '<span class="ltx_author_notes"><span class="ltx_contact ltx_role_affiliation">'
+        "Affiliation: Unisound AI Technology Co., Ltd"
+        '</span></span></span><a href="https://project.example/">Project</a></article>'
+    )
+
+
+def test_real_later_merged_author_shape_is_ambiguous(paper):
+    paper = replace(paper, authors=["Yining Wang", "Yuchen Liu"])
+    assert html_mapping_unclear(later_merged_author_html(), paper)
+
+
+def test_overlapping_name_substrings_are_not_two_authors_in_one_block(paper):
+    paper = replace(paper, authors=["Yu Li", "Mingyu Li"])
+    html = (
+        '<span class="ltx_creator ltx_role_author"><span class="ltx_personname">Mingyu Li</span>'
+        '<span class="ltx_contact ltx_role_affiliation">Example University</span></span>'
+    )
+    assert not html_mapping_unclear(html, paper)
+
+
+def test_ambiguous_html_mapping_is_discarded_not_left_when_pdf_omits_author(config, paper, prepare):
+    config.enrichment.follow_project_page = False
+    paper = replace(paper, authors=["Yining Wang", "Yuchen Liu"])
+    html_url = paper.metadata_html_url
+    enricher, events = prepare(
+        paper,
+        html={paper.url: abs_page(paper), html_url: later_merged_author_html()},
+        pdf=("Yining Wang2, Yuchen Liu\n2 Unisound AI Technology Co., Ltd", []),
+        extracted={
+            html_url: source_details(
+                paper,
+                html_url,
+                project=PROJECT,
+                affiliations=[("Unisound AI Technology Co., Ltd", paper.authors)],
+            ),
+            paper.pdf_url: source_details(
+                paper,
+                paper.pdf_url,
+                affiliations=[("Unisound AI Technology Co., Ltd", ["Yining Wang"])],
+            ),
+        },
+    )
+    result = enricher.enrich(paper)
+    assert ("pdf", paper.pdf_url) in events
+    assert result.project_url == PROJECT
+    assert result.project_source == html_url
+    assert result.affiliations[0].authors == ["Yining Wang"]
+    assert result.affiliations[0].source == paper.pdf_url
+    assert result.affiliation_status == "partial"
+    assert result.completeness(paper)["missing_authors"] == ["Yuchen Liu"]
+    assert result.needs_refresh(paper)
+    assert any("HTML 作者机构标记不可靠" in note for note in result.notes)
+    assert any("Discarded" in note for note in result.source_diagnostics[html_url])
+
+
+def test_ambiguous_html_without_pdf_does_not_silently_supply_institutions(config, paper, prepare):
+    config.enrichment.follow_project_page = False
+    paper = replace(paper, authors=["Yining Wang", "Yuchen Liu"])
+    html_url = paper.metadata_html_url
+    enricher, _ = prepare(
+        paper,
+        html={paper.url: abs_page(paper), html_url: later_merged_author_html()},
+        extracted={
+            html_url: source_details(
+                paper,
+                html_url,
+                project=PROJECT,
+                affiliations=[("Unisound AI Technology Co., Ltd", paper.authors)],
+            )
+        },
+    )
+    result = enricher.enrich(paper)
+    assert result.project_url == PROJECT
+    assert result.affiliations == []
+    assert result.affiliation_status == "unavailable"
+
+
+def test_model_notes_are_source_diagnostics_not_global_user_notes(config, paper):
+    class Model:
+        def complete_json(self, _system, _context, parser, **_kwargs):
+            return parser(
+                json.dumps(
+                    {
+                        "project_url": PROJECT,
+                        "affiliations": [],
+                        "notes": ["No affiliations appear in this source."],
+                    }
+                )
+            )
+
+    result = Enricher(config, None, Model()).extract(paper, "Header", [PROJECT], paper.url)
+    assert result.source_diagnostics == {paper.url: ["No affiliations appear in this source."]}
+    assert "No affiliations appear in this source." not in result.notes
+    assert result.notes == ["作者机构由论文元数据自动提取；请以来源页的署名为准。"]
+
+
+def test_merge_preserves_each_source_diagnostic_without_contradictory_global_notes(paper):
+    current = source_details(paper, paper.url, project=PROJECT)
+    current.notes = ["人工核实说明。"]
+    current.source_diagnostics = {paper.url: ["No affiliations appear in this source."]}
+    incoming = source_details(
+        paper, paper.pdf_url, affiliations=[("Example University", paper.authors)]
+    )
+    incoming.source_diagnostics = {
+        paper.pdf_url: ["No project URL appears in this PDF."],
+        paper.url: ["No affiliations appear in this source.", "Abs comments inspected."],
+    }
+    result = classify_details(merge_details(current, incoming), paper, [], checked=True)
+    assert result.project_status == result.affiliation_status == "found"
+    assert result.notes == ["人工核实说明。"]
+    assert result.source_diagnostics == {
+        paper.url: ["No affiliations appear in this source.", "Abs comments inspected."],
+        paper.pdf_url: ["No project URL appears in this PDF."],
+    }

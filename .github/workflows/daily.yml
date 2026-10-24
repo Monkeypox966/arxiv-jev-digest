@@ -9,7 +9,7 @@ on:
       mode:
         description: Preview uses real APIs but sends no email; send enables delivery.
         type: choice
-        options: [preview, send, inspect, recover_preview, recover_send, reset_checkpoints, resolve_sent, resolve_retry]
+        options: [preview, send, inspect, delivery_test, recover_preview, recover_send, reset_checkpoints, resolve_sent, resolve_retry]
         default: preview
       delivery_id:
         description: Only for resolve modes; check the recipient inbox first.
@@ -74,6 +74,7 @@ jobs:
           case "$RUN_MODE" in
             preview) uv run --locked --no-dev arxiv-digest run --dry-run ;;
             send) uv run --locked --no-dev arxiv-digest run --persist-outbox ;;
+            delivery_test) uv run --locked --no-dev arxiv-digest test-email --persist-outbox ;;
             recover_preview) uv run --locked --no-dev arxiv-digest run --dry-run --recovery-days "$RECOVERY_DAYS" ;;
             recover_send) uv run --locked --no-dev arxiv-digest run --persist-outbox --recovery-days "$RECOVERY_DAYS" ;;
             reset_checkpoints) uv run --locked --no-dev arxiv-digest reset-checkpoints ;;

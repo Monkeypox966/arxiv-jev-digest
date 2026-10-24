@@ -15,7 +15,13 @@ from .clients import fingerprint
 from .config import ArxivSettings, load_config, recipients, validate_credentials
 from .demo import demo
 from .http import USER_AGENT, ServiceError
-from .operations import actions_summary, inspect_metadata, notify_failure, persist_outbox
+from .operations import (
+    actions_summary,
+    inspect_metadata,
+    notify_failure,
+    persist_outbox,
+    test_delivery,
+)
 from .pipeline import run
 from .store import Store, recipient_key
 
@@ -51,6 +57,10 @@ def main(argv=None) -> int:
     )
     inspect.add_argument("paper_ids", nargs="+")
     inspect.add_argument("--refresh", action="store_true", help="Bypass metadata cache")
+    delivery_test = sub.add_parser(
+        "test-email", help="Explicit SMTP test; no models or paper-history changes"
+    )
+    delivery_test.add_argument("--persist-outbox", action="store_true")
     sub.add_parser(
         "status", help="Show latest health and API usage; write Actions summary if available"
     )
@@ -96,6 +106,14 @@ def main(argv=None) -> int:
         elif args.command == "inspect":
             with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=60) as client:
                 result = inspect_metadata(config, client, args.paper_ids, refresh=args.refresh)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        elif args.command == "test-email":
+            result = test_delivery(
+                config,
+                outbox_hook=(lambda: persist_outbox(config_path.parent))
+                if args.persist_outbox
+                else None,
+            )
             print(json.dumps(result, ensure_ascii=False, indent=2))
         elif args.command == "reset-checkpoints":
             addresses = recipients(config)
