@@ -47,7 +47,7 @@ weight = 1.0
 
 以上为节选，请直接编辑原配置中对应区块，避免重复 TOML 表。每项兴趣表达一个可以从摘要判断的命题；建议用英文写判断条件。排除条件另写在 `[[exclusions]]`，用正向句子描述被排除的主题，例如 “The primary application is medical image analysis.”。
 
-邮箱默认是占位配置，必须设置 `[email].host`、`port` 和 `security`。支持 SSL 与 STARTTLS，不支持明文连接。
+邮箱默认使用 QQ 邮箱示例：`smtp.qq.com`、端口 `465`、`security = "ssl"`。使用其他服务商时修改 `[email].host`、`port` 和 `security`。支持 SSL 与 STARTTLS，不支持明文连接。
 
 ### 3. 添加 GitHub Secrets
 
@@ -133,6 +133,8 @@ uv run arxiv-digest --config profiles/robotics.toml check
 API 模型名和可用性可能变化，默认值核验于 2026-10-24。参考 [TypeSafe 模型文档](https://docs.typesafe.ai/models)、[DeepSeek 模型文档](https://api-docs.deepseek.com/quick_start/pricing)。
 
 ### 邮箱设置
+
+QQ 邮箱需在“账号与安全 → 安全设置”确认 POP3/IMAP/SMTP 服务已开启，并生成授权码，将授权码填入 `SMTP_PASSWORD`。账号与发件地址使用完整 QQ 邮箱地址；不要填写 QQ 登录密码。参数依据 [QQ 邮箱官方配置说明](https://wx.mail.qq.com/list/readtemplate?name=app_intro.html#/agreement/authorizationCode)。
 
 使用邮箱服务商当前提供的 SMTP 参数和授权方式。在 `[email]` 中设置服务器和端口，在 Secrets / `.env` 中设置账号、授权码和收件人。例如服务商要求 SSL 465 时：
 

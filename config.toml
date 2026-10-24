@@ -68,7 +68,7 @@ attempts = 3
 disable_thinking = true # Set false for a provider that does not accept this field.
 
 [email]
-host = "smtp.example.com" # Set your provider's SMTP host.
+host = "smtp.qq.com" # QQ Mail example; replace for another SMTP provider.
 port = 465
 security = "ssl" # "starttls" usually uses port 587
 sender_name = "arXiv Paper Digest"
