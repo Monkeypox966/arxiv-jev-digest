@@ -2,8 +2,8 @@ name: Daily arXiv Digest
 
 on:
   schedule:
-    # 00:17 UTC = 08:17 Asia/Shanghai; edit this cron to change delivery time.
-    - cron: '17 0 * * *'
+    # 01:30 UTC = 09:30 Asia/Shanghai; edit this cron to change start time.
+    - cron: '30 1 * * *'
   workflow_dispatch:
     inputs:
       mode:

@@ -82,7 +82,7 @@ OpenRouter 的 Jev 使用 decisions 接口，不能使用普通 chat/completions
 2. 在工作流 Artifacts 下载报告，打开 `digest.html` 检查筛选和摘要。
 3. 再次手动运行，选择 `send`，验证实际收信。
 
-之后每天自动执行发送模式。默认时间为北京时间 **08:17**。修改 [`.github/workflows/daily.yml`](.github/workflows/daily.yml) 的 `cron` 可调整时间，表达式使用 UTC，例如 `17 1 * * *` 对应北京时间 09:17。配置中的 `timezone` 只控制报告显示，不会改变 Actions 调度。
+之后每天自动执行发送模式。默认每天北京时间 **09:30** 启动，处理完成后发送邮件。修改 [`.github/workflows/daily.yml`](.github/workflows/daily.yml) 的 `cron` 可调整启动时间，表达式使用 UTC，当前的 `30 1 * * *` 对应北京时间 09:30。配置中的 `timezone` 只控制报告显示，不会改变 Actions 调度。
 
 GitHub 调度可能延迟；公共仓库长期没有活动也可能停用定时工作流。详见 [GitHub schedule 文档](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)。
 
