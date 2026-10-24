@@ -22,8 +22,8 @@ model = "jev-1.14.0"
 # For OpenRouter: endpoint = "https://openrouter.ai/api/alpha/decisions"
 # model = "typesafe/jev-1.14"
 endpoint = "https://api.typesafe.ai/v1/systemone"
-concurrency = 4
-requests_per_minute = 120
+concurrency = 8
+requests_per_minute = 600
 timeout_seconds = 60
 attempts = 3
 

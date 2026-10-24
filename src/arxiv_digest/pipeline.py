@@ -105,9 +105,13 @@ def run(
                 uncached.append(paper)
         LOG.info("Screening %d papers with Jev (%d cached)", len(uncached), len(decisions))
         jev = JevClient(config, client)
-        for paper, decision in bounded_map(jev.judge, uncached, config.jev.concurrency):
+        for completed, (paper, decision) in enumerate(
+            bounded_map(jev.judge, uncached, config.jev.concurrency), 1
+        ):
             decisions[paper.id] = decision
             store.cache("decision", decision_key(config, paper), decision.model_dump())
+            if completed % 100 == 0 or completed == len(uncached):
+                LOG.info("Jev screening progress: %d/%d", completed, len(uncached))
         selected = {}
         for address, pool in pools.items():
             ranked = sorted(
@@ -131,11 +135,13 @@ def run(
                 unsummarized.append(paper)
         LOG.info("Summarizing %d selected papers (%d cached)", len(unsummarized), len(summaries))
         deepseek = DeepSeekClient(config, client)
-        for paper, summary in bounded_map(
-            deepseek.summarize, unsummarized, config.deepseek.concurrency
+        for completed, (paper, summary) in enumerate(
+            bounded_map(deepseek.summarize, unsummarized, config.deepseek.concurrency), 1
         ):
             summaries[paper.id] = summary
             store.cache("summary", summary_key(config, paper), summary.model_dump())
+            if completed % 5 == 0 or completed == len(unsummarized):
+                LOG.info("DeepSeek summary progress: %d/%d", completed, len(unsummarized))
         stats = {
             "fetched": len(papers),
             "new_candidates": len(wanted),
