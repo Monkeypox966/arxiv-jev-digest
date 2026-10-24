@@ -130,6 +130,8 @@ uv run arxiv-digest --config profiles/robotics.toml check
 
 权重合成后的分数用于排序，尤其 noisy-OR 不应解释为经校准的整体概率；相关性也不代表论文质量。
 
+Jev 示例配置使用 8 个并发请求、每分钟最多 600 次调用。请按自己组织在 TypeSafe 控制台显示的限额调整 `concurrency` 和 `requests_per_minute`，并为同一组织的其他应用预留额度。日志每完成 100 篇筛选、5 篇摘要报告一次进度。
+
 API 模型名和可用性可能变化，默认值核验于 2026-10-24。参考 [TypeSafe 模型文档](https://docs.typesafe.ai/models)、[DeepSeek 模型文档](https://api-docs.deepseek.com/quick_start/pricing)。
 
 ### 邮箱设置
@@ -184,6 +186,8 @@ uv run arxiv-digest resolve DELIVERY_ID --outcome retry
 GitHub 上在手动工作流选 `resolve_sent` 或 `resolve_retry`，填入错误日志中的 delivery ID。确认步骤只更新状态；之后再运行 `send`。这不是 SMTP 层面的绝对一次投递保证；`sent` 表示发件服务器接受，最终送达仍可能受退信或垃圾箱规则影响。
 
 ## 开发与验证
+
+真实模型调用、QQ 收件、中断恢复和重复运行的验证结果见 [实际联调记录](docs/validation.md)。
 
 ```bash
 uv sync --locked
