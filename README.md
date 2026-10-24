@@ -193,7 +193,7 @@ GitHub 上在手动工作流选 `resolve_sent` 或 `resolve_retry`，填入错�
 
 ## 开发与验证
 
-真实模型调用、QQ 收件、中断恢复和重复运行的验证结果见 [实际联调记录](docs/validation.md)。
+真实模型调用、QQ 收件、中断恢复和重复运行的验证结果见 [初始联调记录](docs/validation.md)；最新专题测试见 [cs.RO 正式测试](docs/robotics-validation.md)。
 
 ```bash
 uv sync --locked
