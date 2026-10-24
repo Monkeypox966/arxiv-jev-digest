@@ -45,20 +45,40 @@ unknown_policy = "keep" # "exclude" for strict filtering when metadata is unavai
 
 [[interests]]
 id = "humanoid"
-label = "人形机器人与全身控制"
-text = "The paper develops or evaluates whole-body behavior, control, locomotion, or loco-manipulation of humanoid or bipedal robots."
+label = "人形移动与全身行为"
+text = "The paper's contribution directly concerns locomotion, balance, whole-body coordination, or loco-manipulation of humanoid or bipedal robots. A platform name such as Unitree G1 or H1 can establish the humanoid embodiment, but the title or abstract must also connect the contribution to one of these tasks. Generic arm manipulation, video prediction, or a passing mention of a humanoid platform alone is insufficient. Judge the supplied title and abstract, not potential future applications."
+weight = 1.0
+
+[[interests]]
+id = "whole_body_control"
+label = "全身控制"
+text = "The paper proposes or evaluates whole-body control (whole body control, WBC) coordinating a humanoid robot's floating base, limbs, or multiple contacts. Include model-based and learned controllers. Unitree G1 is a humanoid platform, but its name alone or manipulation of only its arm without whole-body coordination is insufficient. Require evidence of whole-body control in the supplied title or abstract, rather than inferring it from a robot brand or possible future use."
+weight = 1.0
+
+# G1 identifies a platform, not a separate relevance pass. Each question still
+# requires a contribution to the stated research task; other humanoids qualify too.
+[[interests]]
+id = "compliance"
+label = "柔顺与力交互控制"
+text = "The paper proposes or evaluates compliant, impedance, admittance, stiffness-modulated, or force-position control on humanoid or bipedal robots, including Unitree G1. Upper-body or end-effector compliance on humanoid platforms qualifies. Require an explicit mechanism for responding to forces or contact or regulating compliance; generic safe or robust manipulation is insufficient. Methods demonstrated on robot arms alone do not qualify unless the title or abstract also establishes humanoid application."
 weight = 1.0
 
 [[interests]]
 id = "tracking"
 label = "动作追踪与模仿"
-text = "The paper proposes motion tracking, imitation, retargeting, transition synthesis, or teleoperation specifically for humanoid or bipedal robot control."
+text = "The paper contributes reference-motion tracking, motion imitation, motion retargeting, motion transitions, or human-to-robot teleoperation for humanoid or bipedal control, including Unitree G1. Require this control connection in the supplied title or abstract. Object tracking, generic imitation learning on robot arms, and citations of humanoid tracking work are insufficient. A humanoid platform's name alone does not establish a motion-tracking contribution."
 weight = 1.0
 
 [[interests]]
 id = "motion_methods"
-label = "相关动作感知与规划方法"
-text = "The paper proposes a method for sensing articulated human body motion or generating and planning physically feasible articulated human or humanoid motion."
+label = "物理运动与跨本体表征"
+text = "The paper contributes physically based articulated human or humanoid motion synthesis, motion planning, motion priors, or cross-embodiment human-to-humanoid motion or action representations used for policy control. Include physically simulated humanoid character controllers and planners. Require a body-motion or human-to-humanoid action-transfer connection in the title or abstract. Generic video generation, prediction conditioned on existing control tokens, generic reinforcement learning, or generic arm-policy learning without this connection is insufficient."
+weight = 0.75
+
+[[interests]]
+id = "human_motion_sensing"
+label = "人体运动感知"
+text = "The paper estimates articulated human body motion, joint poses, or relative body-segment orientations from sensors such as IMUs or cameras. Require a contribution to human body kinematics or motion capture. Object tracking, physiology, isolated image features, and merely recording videos with a humanoid robot's camera do not qualify."
 weight = 0.75
 
 [[exclusions]]
