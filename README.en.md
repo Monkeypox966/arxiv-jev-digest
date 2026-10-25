@@ -2,19 +2,25 @@
 
 English | [简体中文](README.md)
 
-Screen new arXiv papers with **Jev**, generate summaries with **DeepSeek**, and deliver them by email. Runs on GitHub Actions without a server.
+Screen new arXiv papers with **Jev or a strictly System One-compatible decision model**, generate summaries with **DeepSeek**, and deliver them by email. Runs on GitHub Actions without a server.
 
 The default profile tracks **cs.RO humanoid robotics, whole-body control, motion tracking and imitation**, selecting up to 10 papers per batch. Each entry includes the title, arXiv link, summary, project link, authors and affiliations, with missing information identified. Research interests, institution preferences, summary language and email provider are configurable.
 
 ```text
-Latest arXiv announcements → Deduplication → Jev relevance screening → Affiliation checks and ranking → DeepSeek summaries → Email
+Latest arXiv announcements → Deduplication → Decision model screening → Affiliation checks and ranking → DeepSeek summaries → Email
 ```
 
+<br>
+
 ## Setup
+
+<br>
 
 ### 1. Fork and enable Actions
 
 Fork this repository and enable workflows under **Actions**. Keep the configuration and workflow on your default branch.
+
+<br>
 
 ### 2. Configure your interests
 
@@ -43,13 +49,39 @@ weight = 1.0
 
 Edit existing TOML tables rather than duplicating them. Model endpoints, names and per-run budgets are also configurable. Defaults use the official TypeSafe Jev and DeepSeek APIs. API calls incur usage charges, including metadata extraction and retries.
 
-### 3. Add API keys and email credentials
+<br>
+
+### 3. Choose a decision backend (optional)
+
+TypeSafe Jev is the default. OpenRouter and other services strictly compatible with the existing System One protocol are supported, with one backend used per run. Edit the existing `[jev]` configuration to switch services:
+
+```toml
+[jev]
+backend = "my-provider"
+endpoint = "https://decision.example.com/v1/systemone"
+model = "provider-model-id"
+api_key_env = "DECISION_API_KEY"
+```
+
+Replace the example endpoint and model with your provider's actual values. Backend names must start with a lowercase letter and may contain lowercase letters, digits, hyphens and underscores. Custom backends require an explicit `endpoint` and `model`. The service must use HTTPS with Bearer authentication, accept `state + questions` objects, and return `answers.<question>.type = "noul"` with a `noul` probability in [0, 1]. Other protocols need an adapter. All interests and exclusions for a paper are submitted together and must fit the provider's question limit.
+
+| Backend | Default key variable when `api_key_env` is omitted | Endpoint and model |
+| --- | --- | --- |
+| `typesafe` | `TYPESAFE_API_KEY` | Official Jev defaults |
+| `openrouter` | `OPENROUTER_API_KEY` | `https://openrouter.ai/api/alpha/decisions`; `typesafe/jev-1.14` |
+| Custom name | `DECISION_API_KEY` | Provider's full decision endpoint and model ID |
+
+GitHub Actions passes all three Secret names above; use `DECISION_API_KEY` for another provider. Locally, `api_key_env` may name another environment variable. In Actions, a different variable also needs a corresponding Secret mapping in the workflow's `env`. Run `preview` after switching to check results and thresholds. Protocol compatibility tests do not mean every provider has been tested with real credentials.
+
+<br>
+
+### 4. Add API keys and email credentials
 
 Go to **Settings → Secrets and variables → Actions → New repository secret** and add:
 
 | Secret | Value |
 | --- | --- |
-| `TYPESAFE_API_KEY` | [TypeSafe Jev API key](https://console.typesafe.ai/settings/keys) |
+| Decision service key | Default: `TYPESAFE_API_KEY` ([get a key](https://console.typesafe.ai/settings/keys)); use the table above for other backends. Only the selected service's key is required |
 | `DEEPSEEK_API_KEY` | [DeepSeek API key](https://platform.deepseek.com/api_keys) |
 | `SMTP_USERNAME` | Full sender email address |
 | `SMTP_PASSWORD` | SMTP authorization code or app password |
@@ -60,7 +92,9 @@ Go to **Settings → Secrets and variables → Actions → New repository secret
 
 For another provider, update `[email]` with its SMTP settings. SSL and STARTTLS are supported, commonly on ports 465 and 587 respectively. Keep credentials in Secrets and out of committed files.
 
-### 4. Test and start delivery
+<br>
+
+### 5. Test and start delivery
 
 Open **Actions → Daily arXiv Digest → Run workflow**:
 
@@ -70,7 +104,9 @@ Open **Actions → Daily arXiv Digest → Run workflow**:
 
 The default schedule starts daily at **09:30 Beijing time (01:30 UTC)**; email is sent after processing completes. To change it, edit `cron: '30 1 * * *'` in [`daily.yml`](.github/workflows/daily.yml). This expression uses UTC; `timezone` in `config.toml` only changes report timestamps.
 
-**An empty digest is sent even when there are no new matching papers** (`email.send_empty = true`), explaining that no matches are available. Sending an empty digest adds no model calls; any new candidates still require Jev screening. Previously delivered papers are not resent, and weekends may reuse the latest announcement batch. Set this option to `false` to skip empty digests. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+**An empty digest is sent even when there are no new matching papers** (`email.send_empty = true`), explaining that no matches are available. Sending an empty digest adds no model calls; any new candidates still require decision model screening. Previously delivered papers are not resent, and weekends may reuse the latest announcement batch. Set this option to `false` to skip empty digests. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+
+<br>
 
 ## Missing an email?
 
@@ -82,6 +118,8 @@ Check **Actions → latest run → Summary** for its trigger, outcome, selection
 - **Pending delivery:** check the inbox and spam folder, then follow the [recovery guide](docs/operations.md) before retrying.
 
 The workflow creates a `digest-state` branch for persistent history and caches. Keep that branch and the workflow's `contents: write` permission. Reports and a recovery database are uploaded as Actions Artifacts.
+
+<br>
 
 ## Local use (optional)
 
@@ -100,6 +138,8 @@ uv run arxiv-digest check --credentials
 uv run arxiv-digest run --dry-run
 uv run arxiv-digest run
 ```
+
+<br>
 
 ## Further documentation
 

@@ -88,7 +88,7 @@ def main(argv=None) -> int:
                 validate_credentials(config, send=True)
             print("Configuration valid. No network requests made.")
             print(f"Categories: {', '.join(config.arxiv.categories)}")
-            print(f"Jev: {config.jev.backend} / {config.jev.model}")
+            print(f"Decision model: {config.jev.backend} / {config.jev.model} (System One)")
             print(f"Summary model: {config.deepseek.model}; up to {config.selection.top_k} papers")
             if config.ranking.enabled:
                 print(

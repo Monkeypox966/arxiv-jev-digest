@@ -143,8 +143,7 @@ class JevClient:
         self.client = client
         self.usage = usage
         self.limiter = RateLimiter(60 / config.jev.requests_per_minute)
-        key_name = "TYPESAFE_API_KEY" if config.jev.backend == "typesafe" else "OPENROUTER_API_KEY"
-        self.key = require_env(key_name)
+        self.key = require_env(config.jev.credential_env)
 
     def judge(self, paper: Paper) -> Decision:
         settings = self.config.jev

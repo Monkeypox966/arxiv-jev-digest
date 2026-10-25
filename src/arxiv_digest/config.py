@@ -66,16 +66,28 @@ def https_url(value: str) -> str:
 
 
 class JevSettings(APISettings):
-    backend: Literal["typesafe", "openrouter"] = "typesafe"
+    backend: str = Field(default="typesafe", pattern=r"^[a-z][a-z0-9_-]{0,47}$")
     model: str = Field(default="jev-1.14.0", min_length=1)
     endpoint: str = "https://api.typesafe.ai/v1/systemone"
+    api_key_env: str | None = Field(default=None, pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
     _https = field_validator("endpoint")(https_url)
 
     @model_validator(mode="after")
     def check_backend(self):
+        if self.backend not in {"typesafe", "openrouter"} and not {"endpoint", "model"}.issubset(
+            self.model_fields_set
+        ):
+            raise ValueError("Custom decision backends require an explicit endpoint and model")
         if self.backend == "openrouter" and "api.typesafe.ai" in self.endpoint:
             raise ValueError("OpenRouter requires its decisions endpoint and a typesafe/jev model")
         return self
+
+    @property
+    def credential_env(self) -> str:
+        return self.api_key_env or {
+            "typesafe": "TYPESAFE_API_KEY",
+            "openrouter": "OPENROUTER_API_KEY",
+        }.get(self.backend, "DECISION_API_KEY")
 
 
 class DeepSeekSettings(APISettings):
@@ -244,8 +256,7 @@ def require_env(name: str) -> str:
 
 
 def validate_credentials(config: Config, *, send: bool) -> None:
-    key = "TYPESAFE_API_KEY" if config.jev.backend == "typesafe" else "OPENROUTER_API_KEY"
-    require_env(key)
+    require_env(config.jev.credential_env)
     require_env("DEEPSEEK_API_KEY")
     if send:
         require_env("SMTP_USERNAME")

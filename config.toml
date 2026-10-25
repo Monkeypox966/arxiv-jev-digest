@@ -21,6 +21,8 @@ catch_up_max_days = 14 # Exact dates only; fail if outside arXiv recent coverage
 
 [jev]
 backend = "typesafe" # or "openrouter" with OPENROUTER_API_KEY
+# Other System One-compatible services: choose a backend label and set model + endpoint.
+# api_key_env = "DECISION_API_KEY" # default for backends other than typesafe/openrouter
 model = "jev-1.14.0"
 # For OpenRouter: endpoint = "https://openrouter.ai/api/alpha/decisions"
 # model = "typesafe/jev-1.14"
