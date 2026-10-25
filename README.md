@@ -56,7 +56,7 @@ weight = 1.0
 | `EMAIL_FROM` | 发件地址，通常与 `SMTP_USERNAME` 相同 |
 | `EMAIL_TO` | 收件地址，多个地址用英文逗号分隔 |
 
-**QQ 邮箱示例：**在邮箱的“账号与安全 → 安全设置”开启 SMTP 并生成授权码，将授权码填入 `SMTP_PASSWORD`。默认配置已使用 `smtp.qq.com`、端口 `465`、`security = "ssl"`；不要填写 QQ 登录密码。
+**QQ 邮箱示例**：在邮箱的“账号与安全 → 安全设置”开启 SMTP 并生成授权码，将授权码填入 `SMTP_PASSWORD`。默认配置已使用 `smtp.qq.com`、端口 `465`、`security = "ssl"`；不要填写 QQ 登录密码。
 
 其他邮箱请将 `[email]` 改为服务商提供的参数，支持 SSL 和 STARTTLS（常用端口分别为 465、587）。凭据只存 Secrets，不要写入代码或提交到仓库。
 
