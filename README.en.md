@@ -2,27 +2,19 @@
 
 English | [简体中文](README.md)
 
-Screen new arXiv papers with **Jev or a strictly System One-compatible decision model**, generate summaries with **DeepSeek**, and deliver them by email. Runs on GitHub Actions without a server.
-
-The default profile tracks **cs.RO humanoid robotics, whole-body control, motion tracking and imitation**, selecting up to 10 papers per batch. Each entry includes the title, arXiv link, summary, project link, authors and affiliations, with missing information identified. Research interests, institution preferences, summary language and email provider are configurable.
-
-```text
-Latest arXiv announcements → Deduplication → Decision model screening → Affiliation checks and ranking → DeepSeek summaries → Email
-```
+Screen new arXiv papers, generate summaries and deliver them by email. Runs on GitHub Actions without a server.
+The default setup uses Jev for screening and DeepSeek for Chinese summaries, tracks cs.RO robotics, and selects up to 10 papers per batch. Follow the steps below to use your own research interests and language.
 
 <br>
 
-## Setup
+## Step 1: Fork and enable Actions
+
+Click **Fork** to create your own copy, then open **Actions** in your repository and enable the workflows.
+Make the following changes in your own copy. Keep the configuration and workflow on its default branch.
 
 <br>
 
-### 1. Fork and enable Actions
-
-Fork this repository and enable workflows under **Actions**. Keep the configuration and workflow on your default branch.
-
-<br>
-
-### 2. Configure your interests
+## Step 2: Configure your interests
 
 Edit the existing fields in [`config.toml`](config.toml):
 
@@ -47,13 +39,50 @@ text = "Proposes a method for learning robot manipulation policies from demonstr
 weight = 1.0
 ```
 
-Edit existing TOML tables rather than duplicating them. Model endpoints, names and per-run budgets are also configurable. Defaults use the official TypeSafe Jev and DeepSeek APIs. API calls incur usage charges, including metadata extraction and retries.
+Save and commit your changes to the default branch. Edit existing TOML tables rather than duplicating them. Model endpoints, names and per-run budgets are also configurable. Defaults use the official TypeSafe Jev and DeepSeek APIs. API calls incur usage charges, including metadata extraction and retries.
 
 <br>
 
-### 3. Choose a decision backend (optional)
+## Step 3: Add API keys and email credentials
 
-TypeSafe Jev is the default. OpenRouter and other services strictly compatible with the existing System One protocol are supported, with one backend used per run. Edit the existing `[jev]` configuration to switch services:
+Go to **Settings → Secrets and variables → Actions → New repository secret** and add:
+
+| Secret | Value |
+| --- | --- |
+| Decision service key | Default: `TYPESAFE_API_KEY` ([get a key](https://console.typesafe.ai/settings/keys)); see “Change the decision service” below for other backends. Only the selected service's key is required |
+| `DEEPSEEK_API_KEY` | [DeepSeek API key](https://platform.deepseek.com/api_keys) |
+| `SMTP_USERNAME` | Full sender email address |
+| `SMTP_PASSWORD` | SMTP authorization code or app password |
+| `EMAIL_FROM` | Sender address, usually the same as `SMTP_USERNAME` |
+| `EMAIL_TO` | Recipient address; separate multiple addresses with commas |
+
+**QQ Mail:** enable SMTP and generate an authorization code under the account security settings, then save it as `SMTP_PASSWORD`. The default SMTP settings are `smtp.qq.com`, port `465`, `security = "ssl"`. Use the authorization code rather than your QQ login password.
+
+For another provider, update `[email]` with its SMTP settings. SSL and STARTTLS are supported, commonly on ports 465 and 587 respectively. Keep credentials in Secrets and out of committed files.
+
+<br>
+
+## Step 4: Test and send your first digest
+
+Open **Actions → Daily arXiv Digest → Run workflow**:
+
+1. Run `delivery_test` to send one test email without calling any models. Confirm that your email settings work.
+2. Run `preview` to fetch papers and call the models without sending email. Download the report from **Artifacts** and open `digest.html` to check the selection and summaries.
+3. Run `send` for normal screening and delivery. Scheduled runs use this mode automatically.
+
+<br>
+
+## Step 5: Check the daily schedule
+
+The default schedule starts daily at **09:30 Beijing time (01:30 UTC)**; email is sent after processing completes. To change it, edit `cron: '30 1 * * *'` in [`daily.yml`](.github/workflows/daily.yml). This expression uses UTC; `timezone` in `config.toml` only changes report timestamps.
+
+**An empty digest is sent even when there are no new matching papers** (`email.send_empty = true`), explaining that no matches are available. Sending an empty digest adds no model calls; any new candidates still require decision model screening. Previously delivered papers are not resent, and weekends may reuse the latest announcement batch. Set this option to `false` to skip empty digests. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+
+<br>
+
+## Optional: Change the decision service
+
+TypeSafe Jev is the default. Skip this section if you are using the default service. OpenRouter and other services strictly compatible with the existing System One protocol are supported, with one backend used per run. Edit the existing `[jev]` configuration to switch services:
 
 ```toml
 [jev]
@@ -75,39 +104,6 @@ GitHub Actions passes all three Secret names above; use `DECISION_API_KEY` for a
 
 <br>
 
-### 4. Add API keys and email credentials
-
-Go to **Settings → Secrets and variables → Actions → New repository secret** and add:
-
-| Secret | Value |
-| --- | --- |
-| Decision service key | Default: `TYPESAFE_API_KEY` ([get a key](https://console.typesafe.ai/settings/keys)); use the table above for other backends. Only the selected service's key is required |
-| `DEEPSEEK_API_KEY` | [DeepSeek API key](https://platform.deepseek.com/api_keys) |
-| `SMTP_USERNAME` | Full sender email address |
-| `SMTP_PASSWORD` | SMTP authorization code or app password |
-| `EMAIL_FROM` | Sender address, usually the same as `SMTP_USERNAME` |
-| `EMAIL_TO` | Recipient address; separate multiple addresses with commas |
-
-**QQ Mail:** enable SMTP and generate an authorization code under the account security settings, then save it as `SMTP_PASSWORD`. The default SMTP settings are `smtp.qq.com`, port `465`, `security = "ssl"`. Use the authorization code rather than your QQ login password.
-
-For another provider, update `[email]` with its SMTP settings. SSL and STARTTLS are supported, commonly on ports 465 and 587 respectively. Keep credentials in Secrets and out of committed files.
-
-<br>
-
-### 5. Test and start delivery
-
-Open **Actions → Daily arXiv Digest → Run workflow**:
-
-1. Run `preview` to fetch papers and call the models without sending email. Download the report from **Artifacts** and open `digest.html`.
-2. Run `delivery_test` to send one test email without calling any models.
-3. Run `send` for normal screening and delivery. Scheduled runs use this mode automatically.
-
-The default schedule starts daily at **09:30 Beijing time (01:30 UTC)**; email is sent after processing completes. To change it, edit `cron: '30 1 * * *'` in [`daily.yml`](.github/workflows/daily.yml). This expression uses UTC; `timezone` in `config.toml` only changes report timestamps.
-
-**An empty digest is sent even when there are no new matching papers** (`email.send_empty = true`), explaining that no matches are available. Sending an empty digest adds no model calls; any new candidates still require decision model screening. Previously delivered papers are not resent, and weekends may reuse the latest announcement batch. Set this option to `false` to skip empty digests. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
-
-<br>
-
 ## Missing an email?
 
 Check **Actions → latest run → Summary** for its trigger, outcome, selection count and delivery count:
@@ -126,6 +122,8 @@ The workflow creates a `digest-state` branch for persistent history and caches. 
 Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and Python 3.11+, clone the repository, then run:
 
 ```bash
+git clone https://github.com/Monkeypox966/arxiv-jev-digest.git
+cd arxiv-jev-digest
 uv sync --locked
 uv run arxiv-digest check
 uv run arxiv-digest demo
