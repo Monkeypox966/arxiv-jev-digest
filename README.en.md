@@ -70,14 +70,14 @@ Open **Actions → Daily arXiv Digest → Run workflow**:
 
 The default schedule starts daily at **09:30 Beijing time (01:30 UTC)**; email is sent after processing completes. To change it, edit `cron: '30 1 * * *'` in [`daily.yml`](.github/workflows/daily.yml). This expression uses UTC; `timezone` in `config.toml` only changes report timestamps.
 
-**No email is sent when there are no new matching papers** by default (`email.send_empty = false`). Previously delivered papers are not resent, and weekends may reuse the latest announcement batch. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+**An empty digest is sent even when there are no new matching papers** (`email.send_empty = true`), explaining that no matches are available. Sending an empty digest adds no model calls; any new candidates still require Jev screening. Previously delivered papers are not resent, and weekends may reuse the latest announcement batch. Set this option to `false` to skip empty digests. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 
 ## Missing an email?
 
 Check **Actions → latest run → Summary** for its trigger, outcome, selection count and delivery count:
 
 - **No run:** check that the workflow is enabled and on the default branch; run `send` manually to catch up.
-- **Successful, zero deliveries:** usually no new matching papers, or matching papers were already delivered.
+- **Successful, zero deliveries:** check whether you used `preview` or disabled `email.send_empty`; normal send mode includes empty digests by default.
 - **Failed:** inspect the error and `health.json`; check API balance, Secrets and SMTP credentials.
 - **Pending delivery:** check the inbox and spam folder, then follow the [recovery guide](docs/operations.md) before retrying.
 

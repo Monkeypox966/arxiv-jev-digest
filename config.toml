@@ -108,7 +108,7 @@ sender_name = "arXiv Paper Digest"
 subject_prefix = "cs.RO 人形机器人日报"
 # Prefer EMAIL_TO (GitHub Secret) for private addresses.
 recipients = []
-send_empty = false
+send_empty = true # Send a status digest even when no new matching papers are available.
 timeout_seconds = 45
 
 [retention]

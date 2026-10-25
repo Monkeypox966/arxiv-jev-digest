@@ -70,14 +70,14 @@ weight = 1.0
 
 默认每天**北京时间 09:30 启动**，完成筛选后发信。修改 [`daily.yml`](.github/workflows/daily.yml) 中的 `cron: '30 1 * * *'` 可调整时间，当前表达式使用 UTC；`config.toml` 的 `timezone` 只影响报告显示。
 
-**没有新增匹配论文时默认不发邮件**（`email.send_empty = false`），已发送论文不会重发，周末可能继续读取上一公告批次。GitHub 定时任务可能延迟或漏触发，并非准点投递服务；超过 60 天无仓库活动也可能自动停用。[官方说明](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+**没有新增匹配论文时也发送空日报**（`email.send_empty = true`），邮件会说明本次无匹配论文。空日报本身不额外调用模型；如有新候选，仍需调用 Jev 判断相关性。已发送论文不会重发，周末可能继续读取上一公告批次。设为 `false` 可关闭空日报。GitHub 定时任务可能延迟或漏触发，并非准点投递服务；超过 60 天无仓库活动也可能自动停用。[官方说明](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 
 ## 没收到邮件时
 
 先查看 **Actions → 最近一次运行 → Summary**，确认是否触发、是否成功、筛选数量和发送数量：
 
 - **没有运行记录**：检查工作流是否启用、是否在默认分支；可手动运行 `send` 补跑。
-- **成功但发送为 0**：通常没有新增匹配论文，或论文已发送。
+- **成功但发送为 0**：检查是否运行了 `preview` 或关闭了 `email.send_empty`；正常发送模式默认也会发送空日报。
 - **运行失败**：查看错误和 `health.json`；核对 API 余额、Secrets、SMTP 授权码。
 - **存在 pending**：先核查收件箱与垃圾箱，再按[恢复手册](docs/operations.md)确认，避免重复投递。
 
