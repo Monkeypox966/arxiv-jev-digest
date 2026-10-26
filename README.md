@@ -29,7 +29,7 @@
 | `[[exclusions]]` | 要排除的主题；换方向时也应检查这些规则 |
 | `selection.top_k` | 三部分合计上限，默认 15；不降低筛选门槛凑数 |
 | `selection.min_score` | 相关性门槛，默认 0.60 |
-| `ranking` | 相关性筛选后按机构偏好排序（35%）；核实新机构并自动记住其分数及简称，详见[配置](docs/ranking.md) |
+| `ranking` | 相关性筛选后按机构偏好排序（40%）；核实新机构并自动记住其分数及简称，详见[配置](docs/ranking.md) |
 | `deepseek.language` | 摘要语言，默认简体中文 |
 | `email` | SMTP 服务器、端口、安全模式和邮件标题 |
 
@@ -84,7 +84,7 @@ weight = 1.0
 
 需要独立于 GitHub cron 的补跑时，按[外部调度说明](docs/operations.md#独立外部调度)从自己的服务器调用 `daily` 模式。仓库文件本身不会自动创建外部定时器。
 
-默认机构权重 **35%**，S/A/B 分为 **100/80/60**，已核实机构的最低门槛为 **80 分**，因此 B 档会被过滤。未知机构独立按 `unknown_policy` / `unlisted_policy` 处理；[名单与配置](docs/ranking.md)。动作模仿方向也包含 `mimic`，仍要求与人形或双足控制相关。
+默认机构权重 **40%**，S/A/B 分为 **100/80/60**，已核实机构的最低门槛为 **80 分**，因此 B 档会被过滤。未知机构独立按 `unknown_policy` / `unlisted_policy` 处理；[名单与配置](docs/ranking.md)。动作模仿方向也包含 `mimic`，仍要求与人形或双足控制相关。
 
 **没有新增匹配论文时也发送空日报**（`email.send_empty = true`），邮件会说明本次无匹配论文。空日报本身不额外调用模型；如有新候选，仍需调用决策模型判断相关性。新提交和跨分类按论文去重；修订论文按版本去重，已发 v1 后可推送 v2，同一 v2 不重复。周末可能继续读取上一公告批次。设为 `false` 可关闭空日报。GitHub 定时任务可能延迟或漏触发，并非准点投递服务；超过 60 天无仓库活动也可能自动停用。[官方说明](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 

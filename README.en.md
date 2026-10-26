@@ -27,7 +27,7 @@ Edit the existing fields in [`config.toml`](config.toml):
 | `[[exclusions]]` | Topics to exclude; review these when changing research areas |
 | `selection.top_k` | Total limit across all three sections; default: 15, with no minimum quota |
 | `selection.min_score` | Relevance threshold; default: 0.60 |
-| `ranking` | Institution ranking after relevance screening (35%); verified new institutions and aliases are learned persistently; see [configuration](docs/ranking.md) |
+| `ranking` | Institution ranking after relevance screening (40%); verified new institutions and aliases are learned persistently; see [configuration](docs/ranking.md) |
 | `deepseek.language` | Summary language; change `"简体中文"` to `"English"` for English summaries |
 | `email` | SMTP host, port, security mode and subject prefix |
 
@@ -82,7 +82,7 @@ To change the target time, update the primary cron, fallback window and `--daily
 
 For a fallback independent of GitHub cron, use your own scheduler to invoke `daily` mode as described in the [operations guide](docs/operations.md#独立外部调度). Repository files alone do not create an external scheduler.
 
-Institutions contribute **35%** of the ranking. S/A/B tiers score **100/80/60**, with a minimum of **80** for verified institutions, excluding B-tier papers. Unknown institutions use separate `unknown_policy` / `unlisted_policy` settings. See the [list and configuration](docs/ranking.md). Motion imitation also includes `mimic`, requiring a humanoid or bipedal control contribution.
+Institutions contribute **40%** of the ranking. S/A/B tiers score **100/80/60**, with a minimum of **80** for verified institutions, excluding B-tier papers. Unknown institutions use separate `unknown_policy` / `unlisted_policy` settings. See the [list and configuration](docs/ranking.md). Motion imitation also includes `mimic`, requiring a humanoid or bipedal control contribution.
 
 **An empty digest is sent even when there are no new matching papers** (`email.send_empty = true`), explaining that no matches are available. Sending an empty digest adds no model calls; any new candidates still require decision model screening. New submissions and cross-lists are deduplicated by paper; replacements by version. A delivered v1 can be followed by v2, but the same v2 is not resent. Weekends may reuse the latest announcement batch. Set this option to `false` to skip empty digests. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 

@@ -40,7 +40,7 @@ combine = "max" # or "noisy_or"; composed scores are ranking signals
 [ranking]
 # Relevance gate first; verified institution filter and ranking before Top K.
 enabled = true
-institution_weight = 0.35 # final = 0.65 * relevance + 0.35 * institution
+institution_weight = 0.40 # final = 0.60 * relevance + 0.40 * institution
 min_institution_score = 0.80 # Keep verified S/A tiers; filter B, not missing evidence.
 unknown_policy = "keep" # "exclude" for strict filtering when metadata is unavailable
 unlisted_policy = "keep" # absence from a preference list is not a low-quality verdict
