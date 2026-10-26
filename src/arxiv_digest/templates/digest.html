@@ -8,80 +8,44 @@
 <body style="margin:0;padding:0;background:#f1f4f3;color:#243832;font-family:Arial,'Microsoft YaHei',sans-serif;line-height:1.7;">
   <div style="display:none;max-height:0;overflow:hidden;">{{ date }} · {{ picks|length }} 篇论文，按你的研究兴趣精选。</div>
   <table role="presentation" style="width:100%;border-collapse:collapse;">
-    <tr><td style="padding:28px 12px;">
-      <table role="presentation" style="width:100%;max-width:760px;margin:auto;border-collapse:collapse;">
-        <tr><td style="background:#173e34;padding:32px 28px;border-radius:14px 14px 0 0;color:#f6faf8;">
-          <div style="font-size:12px;letter-spacing:3px;color:#b8d8ca;">THE DAILY RESEARCH BRIEF</div>
-          <h1 style="font-size:30px;line-height:1.3;font-weight:600;margin:12px 0;">值得读的，留给你。</h1>
-          <div style="font-size:15px;color:#d1e6dc;">arXiv 论文日报 · {{ date }}</div>
+    <tr><td style="padding:20px 8px;">
+      <table role="presentation" style="width:100%;max-width:720px;margin:auto;border-collapse:collapse;">
+        <tr><td style="background:#173e34;padding:22px 20px;border-radius:12px 12px 0 0;color:#f6faf8;">
+          <h1 style="font-size:23px;line-height:1.4;font-weight:600;margin:0 0 6px;">arXiv 论文日报</h1>
+          <div style="font-size:14px;color:#d1e6dc;">{{ date }} &nbsp; · &nbsp; {{ picks|length }} 篇精选 / {{ stats.get('fetched', 0) }} 篇候选</div>
+          {% if stats.get('announcement_dates') %}<div style="font-size:12px;color:#d1e6dc;margin-top:4px;">公告批次：{{ stats['announcement_dates']|join(' / ') }}</div>{% endif %}
         </td></tr>
-        <tr><td style="padding:20px 28px;background:#fff;border-bottom:1px solid #e4ebe7;">
-          <strong style="font-size:24px;color:#17654b;">{{ picks|length }}</strong> 篇精选
-          <span style="color:#7b8b83;"> &nbsp; / &nbsp; {{ stats.get('fetched', 0) }} 篇候选</span>
-          <p style="font-size:13px;color:#6a7e73;margin:8px 0 0;">Jev 按研究兴趣筛选 · DeepSeek 依据原始摘要总结</p>
-          {% if ranking_enabled %}<p style="font-size:13px;color:#6a7e73;margin:8px 0 0;">排序：相关性 {{ '%.0f'|format((1 - institution_weight) * 100) }}% + 机构偏好 {{ '%.0f'|format(institution_weight * 100) }}% · 已评分机构最低分 {{ '%.0f'|format(min_institution_score * 100) }}/100<br>机构过滤 {{ stats.get('institution_filtered', 0) }} 篇 · 机构待核实 {{ stats.get('institution_unknown', 0) }} 篇 · 未收录 {{ stats.get('institution_unlisted', 0) }} 篇</p>{% endif %}
-          {% if stats.get('metadata_retries') %}<p style="font-size:13px;color:#6a7e73;">本次含 {{ stats['metadata_retries'] }} 篇此前未发送论文的机构补查。</p>{% endif %}
-          {% if stats.get('announcement_dates') %}<p style="font-size:13px;color:#6a7e73;margin:8px 0 0;">最新公告批次：{{ stats['announcement_dates']|join(' / ') }} · 本次不以提交日期替代公告日期</p>{% endif %}
-          {% if demo %}<p style="padding:10px 12px;background:#fff3d8;color:#80500c;font-size:13px;">离线演示：论文、分数与摘要均为虚构示例，未调用模型，未发送邮件。</p>{% endif %}
-        </td></tr>
+        {% if demo %}<tr><td style="padding:12px 20px;background:#fff3d8;color:#80500c;font-size:13px;">离线演示：论文与摘要均为虚构示例，未调用模型，未发送邮件。</td></tr>{% endif %}
         {% for pick in picks %}
-        <tr><td style="background:#fff;padding:26px 28px;border-bottom:1px solid #e4ebe7;">
+        <tr><td style="background:#fff;padding:22px 20px;border-bottom:1px solid #e4ebe7;overflow-wrap:break-word;">
           <div style="font-size:12px;color:#688577;">{{ '%02d'|format(loop.index) }} &nbsp; / &nbsp; {{ pick.paper.categories|join(' · ') }}</div>
-          <h2 style="font-size:21px;line-height:1.5;margin:10px 0 6px;color:#173e34;">{{ pick.summary.title_zh }}</h2>
-          <div style="font-size:13px;line-height:1.6;color:#6b7b73;">{{ pick.paper.title }}</div>
-          <div style="font-size:12px;color:#6b7b73;margin-top:6px;">作者：{{ pick.paper.authors|join(', ') }}<br>首次提交：{{ pick.paper.published[:10] }}{% if pick.paper.announced %} · 公告批次：{{ pick.paper.announced }}{% endif %}</div>
-          <p style="font-size:12px;color:#236e52;margin:14px 0;">
-            <strong>匹配分数 {{ '%.1f'|format(pick.decision.score * 100) }}%</strong>
-            {% for id, prob in pick.decision.interests.items() %}
-            {% if prob >= 0.5 %} &nbsp; · {{ labels.get(id, id) }} {{ '%.0f'|format(prob * 100) }}%{% endif %}
-            {% endfor %}
-          </p>
-          {% if pick.ranking %}
-          <p style="font-size:12px;color:#5b7063;margin:8px 0 14px;">
-            <strong>综合排序分 {{ '%.1f'|format(pick.ranking.score * 100) }}/100</strong>
-            {% if pick.ranking.status == 'unknown' %} · 机构待核实，未加分
-            {% else %} · 机构偏好分 {{ '%.0f'|format(pick.ranking.institution_score * 100) }}/100{% endif %}<br>
-            {% for match in pick.ranking.matches %}{{ match.institution }} → {{ match.rule }}（{{ '%.0f'|format(match.score * 100) }}）<br>{% endfor %}
-            {% if pick.ranking.status == 'unlisted' %}已核实机构，但未命中偏好名单。{% endif %}
-          </p>
-          {% endif %}
-          <div style="padding:14px 16px;background:#edf5ef;border-left:3px solid #448b66;border-radius:0 6px 6px 0;font-size:15px;">{{ pick.summary.tldr }}</div>
+          <h2 style="font-size:21px;line-height:1.5;margin:8px 0 6px;color:#173e34;">{{ pick.summary.title_zh }}</h2>
+          <div style="font-size:13px;line-height:1.6;color:#63756a;">{{ pick.paper.title }}</div>
+          <p style="font-size:15px;line-height:1.85;margin:14px 0 16px;color:#243832;">{{ pick.summary.tldr }}</p>
           {% if not compact %}
-          <p style="font-size:14px;margin:16px 0 8px;"><strong style="color:#244c3b;">研究问题</strong><br>{{ pick.summary.problem }}</p>
-          <p style="font-size:14px;margin:8px 0;"><strong style="color:#244c3b;">核心方法</strong><br>{{ pick.summary.method }}</p>
-          <p style="font-size:14px;margin:8px 0;"><strong style="color:#244c3b;">主要结果</strong><br>{{ pick.summary.results }}</p>
-          <p style="font-size:13px;margin:8px 0 18px;color:#738075;"><strong>阅读提醒</strong><br>{{ pick.summary.limitations }}</p>
+          <p style="font-size:14px;margin:10px 0;"><strong style="color:#244c3b;">研究问题</strong><br>{{ pick.summary.problem }}</p>
+          <p style="font-size:14px;margin:10px 0;"><strong style="color:#244c3b;">核心方法</strong><br>{{ pick.summary.method }}</p>
+          <p style="font-size:14px;margin:10px 0;"><strong style="color:#244c3b;">主要结果</strong><br>{{ pick.summary.results }}</p>
+          <p style="font-size:13px;margin:10px 0 16px;color:#63756a;"><strong>阅读提醒</strong><br>{{ pick.summary.limitations }}</p>
           {% endif %}
-          {% if pick.details %}
-          <div style="font-size:12px;color:#5b7063;margin:16px 0;">
-            <strong>作者与机构</strong><br>
-            {% set completeness = pick.details.completeness(pick.paper) %}
-            已核实 {{ completeness.covered_authors }}/{{ completeness.total_authors }} 位作者{% if pick.paper.version %} · {{ pick.paper.version }}{% endif %}<br>
-            项目链接：{{ status_labels.get(pick.details.project_status, '待核实') }}<br>
-            {% for affiliation in pick.details.affiliations %}
-            {{ affiliation.institution }}：{{ affiliation.authors|join(', ') }}{% if affiliation.source %} <a href="{{ affiliation.source }}" style="color:#46735a;">来源</a>{% endif %}<br>
-            {% else %}未能核实机构，见论文原文。<br>{% endfor %}
-            {% for note in pick.details.notes %}{{ note }}<br>{% endfor %}
-            {% if pick.details.reviewed_on %}机构与项目链接人工核查：{{ pick.details.reviewed_on }}<br>{% endif %}
-            {% if pick.details.project_source %}<a href="{{ pick.details.project_source }}" style="color:#46735a;">项目链接来源</a><br>{% endif %}
-            {% for source in pick.details.sources %}<a href="{{ source }}" style="color:#46735a;">核查来源 {{ loop.index }}</a> &nbsp;{% endfor %}
+          <div style="font-size:12px;line-height:1.65;color:#63756a;margin:14px 0;">
+            作者：{{ authors[pick.paper.id] }}<br>
+            机构：{{ institutions[pick.paper.id] }}<br>
+            首次提交：{{ pick.paper.published[:10] }}
           </div>
-          {% endif %}
           {% if not demo %}
-          <a href="{{ pick.paper.metadata_url }}" style="display:inline-block;background:#236347;color:#fff;text-decoration:none;padding:7px 16px;border-radius:5px;font-size:13px;">阅读论文 ↗</a>
-          <a href="{{ pick.paper.metadata_pdf_url }}" style="display:inline-block;color:#236347;text-decoration:none;padding:7px 16px;font-size:13px;">PDF ↗</a>
-          {% if pick.details %}
-            {% if pick.details.project_url %}<a href="{{ pick.details.project_url }}" style="display:inline-block;color:#236347;text-decoration:none;padding:7px 16px;font-size:13px;">{{ pick.details.project_label }} ↗</a>
-            {% else %}<span style="font-size:12px;color:#7b877e;">未能确认项目链接，详见来源与说明</span>{% endif %}
-          {% endif %}
+          <a href="{{ pick.paper.metadata_url }}" style="display:inline-block;background:#236347;color:#fff;text-decoration:none;padding:7px 13px;border-radius:5px;font-size:13px;">阅读论文 ↗</a>
+          <a href="{{ pick.paper.metadata_pdf_url }}" style="display:inline-block;color:#236347;text-decoration:none;padding:7px 13px;font-size:13px;">PDF ↗</a>
+          {% if pick.details and pick.details.project_url %}
+          <a href="{{ pick.details.project_url }}" style="display:inline-block;color:#236347;text-decoration:none;padding:7px 13px;font-size:13px;">{{ pick.details.project_label }} ↗</a>
+          {% else %}<span style="display:inline-block;font-size:12px;color:#63756a;padding:7px 0;">项目链接暂未找到</span>{% endif %}
           {% endif %}
         </td></tr>
         {% else %}
-        <tr><td style="padding:36px 28px;background:#fff;">本次没有达到筛选阈值的新论文。</td></tr>
+        <tr><td style="padding:30px 20px;background:#fff;">本次没有达到筛选阈值的新论文。</td></tr>
         {% endfor %}
-        <tr><td style="padding:22px 28px;background:#e7eee9;border-radius:0 0 14px 14px;font-size:12px;color:#63776b;">
-          摘要由 AI 依据标题与原始摘要生成，未阅读全文。匹配分数表示与兴趣的关联，不代表论文质量。<br>
-          {% if ranking_enabled %}机构偏好分来自可修改的名单，仅作质量代理指标，未对论文内容进行质量评审。<br>{% endif %}
+        <tr><td style="padding:16px 20px;background:#e7eee9;border-radius:0 0 12px 12px;font-size:12px;color:#63776b;">
+          AI 摘要仅依据论文标题与原始摘要生成，请以论文原文为准。<br>
           生成于 {{ date }} {{ generated }} · {{ timezone }}
         </td></tr>
       </table>

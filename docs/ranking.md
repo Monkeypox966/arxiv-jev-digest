@@ -9,7 +9,7 @@
 ```toml
 [ranking]
 enabled = true
-institution_weight = 0.20
+institution_weight = 0.35
 min_institution_score = 0.60
 unknown_policy = "keep"
 unlisted_policy = "keep"
@@ -23,7 +23,7 @@ unlisted_policy = "keep"
 - 已核实机构但未命中名单：标记 `unlisted`，没有机构加分。默认 `unlisted_policy = "keep"` 保留并标注，不把名单未收录视作低质量；设 `exclude` 可恢复严格名单过滤。
 - 机构资料无法核实、缺少作者对应关系或来源：标记 `unknown`，默认保留但无机构加分。设 `unknown_policy = "exclude"` 可严格移除。这样可以区分“未进入偏好名单”和“没有取得可靠资料”。
 - `min_institution_score` 仅作用于匹配到明确分值的机构，取值 0–1；提高到 0.8 会移除 0.6 档，设为 0 不按分值过滤。未收录和未知机构分别由两项 policy 决定。
-- 同分按相关性、arXiv ID 稳定排序。邮件保留原相关性分，另显示综合排序分、机构分及匹配依据。
+- 同分按相关性、arXiv ID 稳定排序。相关性分、综合排序分、机构分及匹配依据保留在 JSON 报告中，邮件不展示这些诊断明细。
 
 默认名单位于 [`institutions.json`](../src/arxiv_digest/data/institutions.json)：
 
@@ -59,7 +59,7 @@ aliases = ["Example Robotics Institute"]
 
 默认 `match_mode = "phrase"`：统一 Unicode、大小写与空白，并对英文短语或缩写检查字符边界，避免 MIT 匹配 MITRE。`exact` 要求整条机构名称匹配，用于容易与普通实验室名称混淆的公司，如 Physical Intelligence（不会把同济的 Physical Intelligence Lab 当成该公司）。不要加入无辨识度的缩写，例如 PI、交大、华盛顿。
 
-`digest.json` 的每篇记录含 `ranking`；同目录 `ranking-audit.json` 记录所有通过相关性门槛的候选、机构匹配、是否通过机构过滤、是否入选，便于检查被移除的论文。切换权重或名单会重新考虑未发送论文，复用原 Jev 判断与摘要缓存；已发送论文不会重发。
+示例配置采用相关性 65% + 机构偏好 35%。邮件聚焦摘要、作者简表、机构概览和论文 / 项目链接，不展示评分依据或逐作者机构对应。`digest.json` 的每篇记录保留完整 `ranking`、作者机构映射和来源；同目录 `ranking-audit.json` 记录所有通过相关性门槛的候选、机构匹配、是否通过机构过滤、是否入选，便于检查被移除的论文。切换权重或名单会重新考虑未发送论文，复用原 Jev 判断；摘要提示词版本变化时生成新版摘要，已发送论文不会自动重发。
 
 ## 实现参考
 

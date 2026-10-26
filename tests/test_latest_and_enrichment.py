@@ -132,7 +132,7 @@ def test_verified_metadata_requires_no_network_or_model_call(config, paper):
     assert details.affiliations[0].authors == paper.authors
 
 
-def test_compact_report_keeps_full_authors_institutions_and_batch(config, paper, summary):
+def test_compact_report_keeps_institution_overview_project_and_batch(config, paper, summary):
     config.compact_summaries = True
     details = PaperDetails(
         project_url="https://project.example/",
@@ -148,7 +148,7 @@ def test_compact_report_keeps_full_authors_institutions_and_batch(config, paper,
     _, text, html = render(
         config, [pick], datetime.now(UTC), {"announcement_dates": ["2026-10-23"]}
     )
-    assert "最新公告批次：2026-10-23" in text
+    assert "公告批次：2026-10-23" in text
     assert "Example" not in text
     assert "A < B University" in text
     assert "A &lt; B University" in html

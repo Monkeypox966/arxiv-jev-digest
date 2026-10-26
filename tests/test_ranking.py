@@ -12,7 +12,7 @@ from arxiv_digest.config import Config, RankingSettings
 from arxiv_digest.models import Affiliation, Decision, PaperDetails, Pick
 from arxiv_digest.pipeline import run
 from arxiv_digest.ranking import matches_alias, passes_institution_filter, rank_paper
-from arxiv_digest.report import render
+from arxiv_digest.report import render, write_report
 
 
 def details(paper, *institutions):
@@ -130,7 +130,7 @@ def test_ranking_changes_review_profile_but_preserves_existing_model_caches(conf
     assert decision_key(config, paper) == old_decision
 
 
-def test_report_explains_scores_and_escapes_institution_evidence(config, paper, summary):
+def test_report_keeps_ranking_evidence_in_json_instead_of_email(config, paper, summary):
     config.ranking.enabled = True
     value = details(paper, "MIT <script>")
     ranking = rank_paper(paper, 0.9, value, config.ranking)
@@ -142,13 +142,43 @@ def test_report_explains_scores_and_escapes_institution_evidence(config, paper, 
         ranking,
     )
     _, text, html = render(config, [pick], datetime.now(UTC), {})
-    assert "综合排序分：92.0/100" in text
-    assert "机构偏好分：100/100" in text
-    assert "MIT <script> →" in text
-    assert "MIT &lt;script&gt;" in html
+    assert "机构：Massachusetts Institute of Technology" in text
+    assert "综合排序分" not in text + html
+    assert "机构偏好分" not in text + html
+    assert "MIT <script> →" not in text + html
     assert "<script>" not in html
-    assert "80%" in html and "20%" in html
     assert pick.to_dict()["ranking"]["matches"][0]["alias"] == "MIT"
+    assert pick.to_dict()["details"]["affiliations"][0]["institution"] == "MIT <script>"
+
+
+def test_brief_email_collapses_departments_and_keeps_full_records(config, paper, summary):
+    from dataclasses import replace
+
+    paper = replace(paper, authors=["A. Author", "B. Author", "C. Author", "D. Author"])
+    value = details(paper, "MIT CSAIL", "MIT EECS", "Stanford", "NVIDIA")
+    value.notes = ["PDF 作者机构包已按明确数字标号核对。"]
+    value.project_url = "https://project.example/"
+    ranking = rank_paper(paper, 0.9, value, config.ranking)
+    pick = Pick(
+        paper,
+        Decision(score=0.9, interests={}, exclusions={}, excluded=False, model="test"),
+        summary,
+        value,
+        ranking,
+    )
+    _, text, html = write_report(config.output_dir, config, [pick], datetime.now(UTC), {})
+    assert "等 4 位作者" in text
+    assert "等 3 个署名单位" in text
+    assert "MIT CSAIL" not in text + html
+    assert "MIT EECS" not in text + html
+    assert "D. Author" not in text + html
+    assert value.notes[0] not in text + html
+    assert html.index(summary.tldr) < html.index("作者：")
+    assert "https://project.example/" in text + html
+    record = json.loads((config.output_dir / "digest.json").read_text("utf-8"))
+    assert record["papers"][0]["paper"]["authors"] == paper.authors
+    assert len(record["papers"][0]["details"]["affiliations"]) == 4
+    assert len(record["papers"][0]["ranking"]["matches"]) == 4
 
 
 def test_pipeline_relevance_gate_then_metadata_filter_then_ranking_and_top_k(

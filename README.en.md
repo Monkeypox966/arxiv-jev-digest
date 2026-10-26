@@ -5,6 +5,8 @@ English | [简体中文](README.md)
 Screen new arXiv papers, generate summaries and deliver them by email. Runs on GitHub Actions without a server.
 The default setup uses Jev for screening and DeepSeek for Chinese summaries, tracks cs.RO robotics, and selects up to 10 papers per batch. Follow the steps below to use your own research interests and language.
 
+Emails prioritize contribution summaries, brief author/institution overviews and paper/project links. Scoring evidence, full author mappings and verification records remain in JSON reports.
+
 <br>
 
 ## Step 1: Fork and enable Actions
@@ -25,7 +27,7 @@ Edit the existing fields in [`config.toml`](config.toml):
 | `[[exclusions]]` | Topics to exclude; review these when changing research areas |
 | `selection.top_k` | Maximum papers per batch; default: 10 |
 | `selection.min_score` | Relevance threshold; default: 0.60 |
-| `ranking` | Institution filtering and ranking after relevance screening; default weight: 20%; see [ranking configuration](docs/ranking.md) |
+| `ranking` | Institution filtering and ranking after relevance screening; default weight: 35%; see [ranking configuration](docs/ranking.md) |
 | `deepseek.language` | Summary language; change `"简体中文"` to `"English"` for English summaries |
 | `email` | SMTP host, port, security mode and subject prefix |
 
