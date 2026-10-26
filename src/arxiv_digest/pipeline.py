@@ -446,7 +446,7 @@ def _run(
                                 delay_hours=config.enrichment.incomplete_cache_hours,
                                 max_attempts=config.enrichment.retry_attempts,
                             )
-                    else:
+                    elif detail is not None:
                         store.clear_metadata_retry(key, None, paper.id)
             candidates = [p.id for p in pools[address]]
             if not picks and not config.email.send_empty:

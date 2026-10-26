@@ -149,3 +149,41 @@ def test_pipeline_scores_institution_list_and_clears_old_mapping_retry(
     with Store(config.state_dir) as store:
         assert store.db.execute("SELECT count(*) FROM metadata_retry").fetchone()[0] == 0
         assert not store.eligible(reader, profile_key(config), paper.id, now=NOW)
+
+
+def test_unchecked_institutions_do_not_clear_existing_retry(config, paper, summary, monkeypatch):
+    from dataclasses import replace
+
+    config.enrichment.enabled = True
+    config.selection.top_k = 1
+    other = replace(paper, id="2610.00002")
+    reader = recipient_key("reader@example.com")
+    with Store(config.state_dir) as store:
+        store.queue_metadata_retry(
+            reader, "old-profile", other.to_dict(), delay_hours=24, max_attempts=3, now=NOW
+        )
+    monkeypatch.setattr("arxiv_digest.pipeline.fetch_papers", lambda *_a, **_kw: [paper, other])
+    monkeypatch.setattr(
+        "arxiv_digest.clients.JevClient.judge",
+        lambda _self, actual: Decision(
+            score=0.9 if actual.id == paper.id else 0.8,
+            interests={},
+            exclusions={},
+            excluded=False,
+            model="test",
+        ),
+    )
+    monkeypatch.setattr(
+        Enricher,
+        "enrich",
+        lambda *_a: source_details(
+            paper, paper.pdf_url, project=PROJECT, affiliations=[("MIT", [])]
+        ),
+    )
+    monkeypatch.setattr("arxiv_digest.clients.DeepSeekClient.summarize", lambda *_a: summary)
+    with httpx.Client(
+        transport=httpx.MockTransport(lambda _r: pytest.fail("Unexpected HTTP"))
+    ) as client:
+        run(config, client, now=NOW, mailer_factory=lambda _: Mailer([]))
+    with Store(config.state_dir) as store:
+        assert store.db.execute("SELECT paper FROM metadata_retry").fetchall() == [(other.id,)]
