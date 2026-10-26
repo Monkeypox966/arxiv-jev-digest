@@ -2,6 +2,87 @@
   "schema_version": 1,
   "institutions": [
     {
+      "institution": "Honda Research Institute Japan",
+      "canonical_name": "Honda Research Institute Japan Co., Ltd. (Japan)",
+      "score": 0.8,
+      "status": "assessed",
+      "confidence": 0.8,
+      "reason": "HRI-JP documents substantial concrete research achievements in robotics and human-robot interaction, including the Haru social robot platform, HARK robot audition open-source software with licensed embedded hardware, the Honda CA communication assistance system, and peer-reviewed publications (ACM/IEEE HRI, IROS best paper, ICSR, IEEE Access). This evidences strong documented research strength in cs.RO.",
+      "sources": [
+        "https://www.jp.honda-ri.com/activity/haru-the-social-robot/",
+        "https://www.jp.honda-ri.com/research/"
+      ],
+      "identity_sources": [
+        "https://ror.org/05at5p855"
+      ],
+      "identity_evidence": [],
+      "evidence": [
+        {
+          "source": "https://www.jp.honda-ri.com/activity/haru-the-social-robot/",
+          "quote": "Collaborative Storytelling with Social Robots. Eric Nichols, Leo Gao, Yurii Vasylkiv, Randy Gomez. The 2021 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS 2021). Best Entertainment and Amusement Paper Award."
+        },
+        {
+          "source": "https://www.jp.honda-ri.com/activity/haru-the-social-robot/",
+          "quote": "Haru: Hardware Design of an Experimental Tabletop Robot Assistant. Randy Gomez, Deborah Szapiro, Kerl Galindo, Keisuke Nakamura. The 13th Annual ACM/IEEE International Conference on Human Robot Interaction."
+        },
+        {
+          "source": "https://www.jp.honda-ri.com/research/",
+          "quote": "HARKは、ロボット聴覚研究の成果として開発されたオープンソースソフトウェアです。HARKは複数のマイクを並べて使うマイクロホンアレイ処理を用いることで、ロボットに聴覚機能を提供します。"
+        },
+        {
+          "source": "https://www.jp.honda-ri.com/research/",
+          "quote": "16個までのマイクに対応し、CPUやメモリを搭載しHARKを組み込んだ厚み２mm程度の名刺サイズの基板で、これ1枚で音源定位や分離を実行することが可能です。株式会社システムインフロンティア社にライセンス供与を行っており"
+        },
+        {
+          "source": "https://www.jp.honda-ri.com/research/",
+          "quote": "Honda CA（Communication Assistance）システムは、聴覚障がい者と健聴者の間のコミュニケーションを支援するシステムです。"
+        }
+      ],
+      "assessed_on": "2026-10-26T19:48:48.634799+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "honda research institute japan",
+        "honda research institute japan co., ltd. (japan)"
+      ]
+    },
+    {
+      "institution": "Idiap Research Institute",
+      "canonical_name": "Idiap Research Institute",
+      "score": 0.8,
+      "status": "assessed",
+      "confidence": 0.8,
+      "reason": "Idiap documents substantive robotics research within its Human-centered AI domain, including named robotics groups (Human-Centered Robotics and AI, Robot Learning & Interaction), human-robot interaction and robot learning expertise, and a funded Assistive Robotics Center project (CAR-LORO). This constitutes substantial concrete strength in cs.RO, though robotics is one facet of a broader AI institute rather than a singular sustained flagship, so not the exceptional tier.",
+      "sources": [
+        "https://www.idiap.ch/en/research/expertise-domains/human-centered-ai",
+        "https://www.idiap.ch/en/projects/car-loro"
+      ],
+      "identity_sources": [
+        "https://ror.org/05932h694"
+      ],
+      "identity_evidence": [],
+      "evidence": [
+        {
+          "source": "https://www.idiap.ch/en/research/expertise-domains/human-centered-ai",
+          "quote": "Including social computing, activity understanding, multi-modal processing, computer vision, assistive technology, human-robot interaction, robot learning & interaction, and demographic fairness."
+        },
+        {
+          "source": "https://www.idiap.ch/en/projects/car-loro",
+          "quote": "l’Idiap souhaite développer un nouveau Centre de Robotique d’Assistance, destiné à centraliser les recherches en robotique de l’Idiap, à recréer des conditions d’usage proches du réel, à accueillir des participants locaux"
+        },
+        {
+          "source": "https://www.idiap.ch/en/projects/car-loro",
+          "quote": "People CALINON Sylvain , SENFT Emmanuel Groups Human-Centered Robotics and AI , Robot Learning & Interaction"
+        }
+      ],
+      "assessed_on": "2026-10-26T19:48:48.634799+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "idiap research institute"
+      ]
+    },
+    {
       "institution": "MPI-IS",
       "canonical_name": "Max Planck Institute for Intelligent Systems",
       "score": 0.8,
