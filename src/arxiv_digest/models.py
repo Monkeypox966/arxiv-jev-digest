@@ -209,8 +209,8 @@ class InstitutionAssessment(BaseModel):
 
 class InstitutionIdentity(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
-    canonical_name: str = Field(min_length=1, max_length=200)
-    website: str
+    canonical_name: str = Field(default="", max_length=200)
+    website: str = ""
     confidence: float = Field(ge=0, le=1)
     ambiguous: bool = False
     evidence: list[InstitutionEvidence] = Field(default_factory=list, max_length=4)
@@ -218,7 +218,7 @@ class InstitutionIdentity(BaseModel):
     @field_validator("website")
     @classmethod
     def safe_website(cls, value):
-        return PaperDetails.safe_project_url(value)
+        return PaperDetails.safe_project_url(value) if value else ""
 
 
 class Ranking(BaseModel):

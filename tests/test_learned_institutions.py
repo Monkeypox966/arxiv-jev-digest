@@ -187,6 +187,77 @@ def test_learning_can_be_disabled_without_changing_manual_preferences(config, of
         assert store.export_institutions()["institutions"] == []
 
 
+@pytest.mark.parametrize("collision", [False, True])
+def test_registered_acronym_query_requires_unique_exact_name(config, collision):
+    import httpx
+
+    organization = {
+        "id": "https://ror.org/river",
+        "names": [
+            {"value": NAME, "types": ["ror_display"]},
+            {"value": "RRI", "types": ["acronym"]},
+        ],
+        "links": [{"type": "website", "value": SITE}],
+    }
+    calls = []
+
+    def respond(req):
+        calls.append(dict(req.url.params))
+        items = [] if "affiliation" in req.url.params else [organization]
+        if items and collision:
+            items.append({**organization, "id": "https://ror.org/another"})
+        return httpx.Response(200, json={"items": items})
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        with Store(config.state_dir) as store:
+            assessor = InstitutionAssessor(config, client, None, store, now=NOW)
+            if collision:
+                with pytest.raises(ValueError, match="ambiguous"):
+                    assessor.resolve("RRI")
+            else:
+                assert assessor.resolve("RRI") == (organization["id"], NAME, SITE)
+    assert calls == [{"affiliation": "RRI"}, {"query": "RRI"}]
+
+
+def test_neutral_assessment_without_quotes_is_valid_and_not_learned(config):
+    with Store(config.state_dir) as store:
+        assessor = InstitutionAssessor(config, None, None, store, now=NOW)
+        raw = json.dumps(
+            {
+                "institution": "RRI",
+                "score": 0.6,
+                "status": "neutral",
+                "confidence": 0.9,
+                "reason": "Insufficient evidence.",
+                "evidence": [],
+            }
+        )
+        result = assessor.parse(raw, "RRI", NAME, {SITE: QUOTE})
+        assessor.remember(result)
+        assert result.status == "neutral" and result.canonical_name == NAME
+        assert result.sources == [SITE]
+        assert store.export_institutions()["institutions"] == []
+
+
+def test_evidence_follows_institution_home_before_research_page(config, monkeypatch):
+    pages = {
+        SITE: '<main><a href="/university">River Robotics Institute</a>' + QUOTE + "</main>",
+        SITE + "university": '<main><a href="/research">Research</a>' + QUOTE + "</main>",
+        SITE + "research": "<main>" + QUOTE * 2 + "</main>",
+    }
+    calls = []
+
+    def fetch(url):
+        calls.append(url)
+        return pages[url], url
+
+    with Store(config.state_dir) as store:
+        assessor = InstitutionAssessor(config, None, None, store, now=NOW)
+        monkeypatch.setattr(assessor.web, "fetch_html", fetch)
+        assert list(assessor.evidence(SITE, NAME)) == list(pages)
+    assert calls == list(pages)
+
+
 def test_explicit_review_preserves_paper_delivery_history(config, official_pages, monkeypatch):
     import httpx
 
