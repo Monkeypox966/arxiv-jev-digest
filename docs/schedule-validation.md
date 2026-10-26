@@ -27,6 +27,15 @@
 - 同一事务记录 SMTP 确认时间；兼容旧数据库，未删历史。
 - Summary 记录每日目标时间、处理开始时的延迟、跳过人数和原因；手动 daily 模式便于验证。
 
-本地 302 项测试通过，覆盖每日守卫、空日报、按收件人补发、UTC/本地日期边界、旧状态迁移、pending 阻断及原有完整流程；静态检查与格式检查通过。线上每日守卫验证在本次修复部署后执行，结果将补充至此。
+## 验证结果
+
+- 本地 302 项测试通过，覆盖每日守卫、空日报、按收件人补发、UTC/本地日期边界、旧状态迁移、pending 阻断及原有完整流程；静态检查与格式检查通过。
+- [代码 CI](https://github.com/Monkeypox966/arxiv-jev-digest/actions/runs/40259115268)：Windows / Ubuntu × Python 3.11 / 3.13 四组全部通过。
+- 使用官方 actionlint v1.7.12 检查全部工作流，结果通过；下载文件与官方发布的 SHA256 校验值一致。未运行可选 shellcheck / pyflakes。
+- [第一次线上每日守卫](https://github.com/Monkeypox966/arxiv-jev-digest/actions/runs/40259122946)：10:26:55 识别出今天已补发，跳过 1 位收件人；0 次 Jev、0 次 DeepSeek、0 封邮件，状态迁移成功。
+- [再次线上每日守卫](https://github.com/Monkeypox966/arxiv-jev-digest/actions/runs/40259280033)：10:28:52 重复验证，同样跳过、0 次模型调用、0 封邮件。
+- 再读远端生产数据库：quick_check 为 ok，sent_at 列存在，0 pending；已发送论文从 38 增至 43，恰好新增今天的 5 篇；公告检查点推进至 10-26。两次守卫未增加发送记录。
+
+上述线上守卫通过手动 daily 模式执行，与自动任务共用命令和生产状态。新增备用 cron 的未来自动触发尚未实际观察，不能把上述测试解释为已经验证 GitHub 会准点触发。
 
 SMTP 成功表示发件服务器接受，并非独立核验最终收件箱。备用任务仍依赖 GitHub，不能保证准点；严格准点需要独立调度来源。依据：[GitHub schedule 文档](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)、[故障排查文档](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows)。
