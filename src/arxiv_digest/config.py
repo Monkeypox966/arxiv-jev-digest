@@ -197,6 +197,7 @@ class RankingSettings(Settings):
     unlisted_policy: Literal["keep", "exclude"] = "keep"
     neutral_score: float = Field(default=0.6, ge=0, le=1)
     assess_unlisted: bool = False
+    learn_institutions: bool = True
     assessment_cache_days: int = Field(default=30, ge=1, le=30)
     assessment_retry_hours: int = Field(default=168, ge=1, le=720)
     assessment_min_confidence: float = Field(default=0.8, ge=0.5, le=1)

@@ -18,6 +18,7 @@ from .demo import demo
 from .http import USER_AGENT, ServiceError
 from .operations import (
     actions_summary,
+    assess_institutions,
     inspect_metadata,
     notify_failure,
     persist_outbox,
@@ -69,6 +70,12 @@ def main(argv=None) -> int:
         help="Explicit API submission-window recovery; does not reset announcement checkpoints",
     )
     sub.add_parser("pending", help="List unresolved email attempts without revealing addresses")
+    institutions = sub.add_parser(
+        "institutions", help="Show/export learned institution scores and aliases"
+    )
+    institutions.add_argument(
+        "--assess", nargs="+", help="Review 1-5 names with DeepSeek; no email"
+    )
     inspect = sub.add_parser(
         "inspect", help="Verify metadata for 1-5 papers; uses APIs, never emails"
     )
@@ -151,6 +158,14 @@ def main(argv=None) -> int:
             print(
                 "Configured announcement checkpoints cleared. Sent and reviewed history preserved."
             )
+        elif args.command == "institutions":
+            if args.assess:
+                with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=60) as client:
+                    result = assess_institutions(config, client, args.assess)
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                with Store(config.state_dir) as store:
+                    print(json.dumps(store.export_institutions(), ensure_ascii=False, indent=2))
         elif args.command in {"pending", "resolve"}:
             with Store(config.state_dir) as store:
                 if args.command == "pending":

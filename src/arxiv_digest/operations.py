@@ -19,6 +19,7 @@ from .clients import DeepSeekClient
 from .config import Config, recipients, require_env
 from .enrichment import Enricher
 from .http import ServiceError
+from .institution_assessment import InstitutionAssessor
 from .mailer import SMTPMailer, build_message, send_prepared
 from .store import Store, recipient_key
 from .usage import UsageTracker
@@ -46,6 +47,57 @@ def persist_outbox(project_root: Path) -> None:
         raise ServiceError(
             "Pending delivery persistence failed; email delivery is blocked", fatal=True
         )
+
+
+def assess_institutions(config: Config, client: httpx.Client, names: list[str]) -> dict:
+    """Explicit institution review without paper fetching, JEV, SMTP or delivery history updates."""
+    names = list(dict.fromkeys(name.strip() for name in names if name.strip()))
+    if not 1 <= len(names) <= 5:
+        raise ValueError("Assess requires 1 to 5 nonempty institution names")
+    now = datetime.now(ZoneInfo(config.timezone))
+    directory = config.output_dir / (
+        now.strftime("%Y%m%d-%H%M%S-institutions-") + uuid.uuid4().hex[:8]
+    )
+    directory.mkdir(parents=True, exist_ok=True)
+    usage = UsageTracker(config.budget)
+    health = {"schema_version": 1, "operation": "institutions", "started_at": now.isoformat()}
+    try:
+        model = DeepSeekClient(config, client, usage=usage)
+        with Store(config.state_dir) as store:
+            assessor = InstitutionAssessor(config, client, model, store, now=now)
+            results = [assessor.assess(name).model_dump() for name in names]
+            registry = store.export_institutions()
+        usage.assert_within_limits()
+        (directory / "institutions.json").write_text(
+            json.dumps(registry, ensure_ascii=False, indent=2), "utf-8"
+        )
+        (directory / "institution-review.json").write_text(
+            json.dumps(
+                {"results": results, "usage": usage.snapshot()}, ensure_ascii=False, indent=2
+            ),
+            "utf-8",
+        )
+        result = {
+            "institutions_checked": len(results),
+            "learned_total": len(registry["institutions"]),
+            "emails_sent": 0,
+            "output_dir": str(directory),
+            "usage": usage.snapshot(),
+        }
+        health.update(status="success", stats=result)
+        return result
+    except BaseException as exc:
+        health.update(
+            status="failed",
+            error_type=type(exc).__name__,
+            error=str(exc) if isinstance(exc, ServiceError) else type(exc).__name__,
+        )
+        raise
+    finally:
+        health["finished_at"] = datetime.now(ZoneInfo(config.timezone)).isoformat()
+        health["usage"] = usage.snapshot()
+        for name, value in (("health.json", health), ("usage.json", usage.snapshot())):
+            (directory / name).write_text(json.dumps(value, ensure_ascii=False, indent=2), "utf-8")
 
 
 def inspect_metadata(

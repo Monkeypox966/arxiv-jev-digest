@@ -30,6 +30,10 @@ def institution_line(pick: Pick) -> str:
     canonical = (
         {match.institution: match.rule for match in pick.ranking.matches} if pick.ranking else {}
     )
+    if pick.ranking:
+        for assessment in pick.ranking.assessments:
+            if assessment.canonical_name and assessment.status in {"rule", "assessed"}:
+                canonical.setdefault(assessment.institution, assessment.canonical_name)
     names = list(
         dict.fromkeys(
             canonical.get(item.institution, item.institution)

@@ -200,9 +200,25 @@ class InstitutionAssessment(BaseModel):
     confidence: float = Field(default=0, ge=0, le=1)
     reason: str = Field(default="", max_length=1600)
     sources: list[str] = Field(default_factory=list)
+    identity_sources: list[str] = Field(default_factory=list)
+    identity_evidence: list[InstitutionEvidence] = Field(default_factory=list, max_length=4)
     evidence: list[InstitutionEvidence] = Field(default_factory=list, max_length=8)
     assessed_on: str = ""
     deferred: bool = False
+
+
+class InstitutionIdentity(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    canonical_name: str = Field(min_length=1, max_length=200)
+    website: str
+    confidence: float = Field(ge=0, le=1)
+    ambiguous: bool = False
+    evidence: list[InstitutionEvidence] = Field(default_factory=list, max_length=4)
+
+    @field_validator("website")
+    @classmethod
+    def safe_website(cls, value):
+        return PaperDetails.safe_project_url(value)
 
 
 class Ranking(BaseModel):

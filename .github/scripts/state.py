@@ -80,6 +80,8 @@ def main(argv=None):
             env=env,
         )
         git("add", "--", "digest.sqlite3", cwd=directory, env=env)
+        if (directory / "institutions.json").is_file():
+            git("add", "--", "institutions.json", cwd=directory, env=env)
         changed = git("diff", "--cached", "--quiet", cwd=directory, env=env, accepted=(0, 1))
         if changed.returncode == 0:
             print("State unchanged.")

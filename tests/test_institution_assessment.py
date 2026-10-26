@@ -25,7 +25,7 @@ class Model:
         self.result, self.error, self.calls = result, error, 0
 
     def complete_json(self, system, context, parser, *, purpose):
-        assert purpose == "institution_assessment"
+        assert purpose in {"institution_assessment", "institution_identity"}
         assert "untrusted" in system
         self.calls += 1
         if self.error:

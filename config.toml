@@ -46,6 +46,7 @@ unknown_policy = "keep" # "exclude" for strict filtering when metadata is unavai
 unlisted_policy = "keep" # absence from a preference list is not a low-quality verdict
 neutral_score = 0.60 # Neutral baseline when institution strength cannot be verified.
 assess_unlisted = true # ROR identity + official website evidence + model-assisted assessment.
+learn_institutions = true # Persist confirmed aliases and new institution scores in the state branch.
 assessment_cache_days = 30
 assessment_retry_hours = 168 # Recheck insufficient evidence after 7 days.
 assessment_min_confidence = 0.80

@@ -3,12 +3,13 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import unicodedata
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from .http import ServiceError
-from .models import Paper
+from .models import InstitutionAssessment, Paper
 
 
 def recipient_key(address: str) -> str:
@@ -26,8 +27,9 @@ class Store:
         directory.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(directory / "digest.sqlite3")
         self.db.execute("PRAGMA busy_timeout = 10000")
+        self.directory = directory
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
-        if version not in {0, 1, 2, 3, 4}:
+        if version not in {0, 1, 2, 3, 4, 5}:
             self.db.close()
             raise ServiceError("State schema is newer than this app; upgrade before running")
         self.db.executescript("""
@@ -66,6 +68,14 @@ class Store:
                 payload TEXT NOT NULL, next_retry TEXT NOT NULL, updated TEXT NOT NULL,
                 PRIMARY KEY(recipient, profile, paper)
             );
+            CREATE TABLE IF NOT EXISTS institution_registry (
+                scope TEXT NOT NULL, name TEXT NOT NULL, payload TEXT NOT NULL,
+                PRIMARY KEY(scope, name)
+            );
+            CREATE TABLE IF NOT EXISTS institution_aliases (
+                scope TEXT NOT NULL, alias TEXT NOT NULL, name TEXT NOT NULL,
+                PRIMARY KEY(scope, alias, name)
+            );
         """)
         columns = {row[1] for row in self.db.execute("PRAGMA table_info(outbox)")}
         for column in ("source", "announcement"):
@@ -81,7 +91,7 @@ class Store:
             self.db.execute(
                 "ALTER TABLE outbox ADD COLUMN selected_versions TEXT NOT NULL DEFAULT '[]'"
             )
-        self.db.execute("PRAGMA user_version = 4")
+        self.db.execute("PRAGMA user_version = 5")
         self.db.commit()
 
     def __enter__(self):
@@ -89,6 +99,58 @@ class Store:
 
     def __exit__(self, *_):
         self.db.close()
+
+    def learned_institution(self, scope: str, alias: str) -> list[InstitutionAssessment]:
+        rows = self.db.execute(
+            "SELECT r.payload FROM institution_aliases a JOIN institution_registry r "
+            "ON a.scope=r.scope AND a.name=r.name WHERE a.scope=? AND a.alias=?",
+            (scope, alias),
+        ).fetchall()
+        return [InstitutionAssessment.model_validate_json(row[0]) for row in rows]
+
+    def remember_institution(
+        self, scope: str, assessment: InstitutionAssessment, aliases: list[str]
+    ):
+        if (
+            assessment.status not in {"rule", "assessed"}
+            or not assessment.canonical_name.strip()
+            or not assessment.sources
+        ):
+            raise ValueError("Only sourced, confirmed institutions may enter the learned registry")
+        name = " ".join(unicodedata.normalize("NFKC", assessment.canonical_name).casefold().split())
+        with self.db:
+            self.db.execute(
+                "INSERT OR REPLACE INTO institution_registry VALUES (?, ?, ?)",
+                (scope, name, assessment.model_dump_json()),
+            )
+            self.db.executemany(
+                "INSERT OR IGNORE INTO institution_aliases VALUES (?, ?, ?)",
+                [(scope, alias, name) for alias in dict.fromkeys(aliases) if alias],
+            )
+        self.export_institutions()
+
+    def export_institutions(self) -> dict:
+        records = []
+        for scope, name, payload in self.db.execute(
+            "SELECT scope, name, payload FROM institution_registry ORDER BY scope, name"
+        ):
+            aliases = [
+                row[0]
+                for row in self.db.execute(
+                    "SELECT alias FROM institution_aliases WHERE scope=? AND name=? ORDER BY alias",
+                    (scope, name),
+                )
+            ]
+            records.append({**json.loads(payload), "scope": scope, "aliases": aliases})
+        record = {"schema_version": 1, "institutions": records}
+        path = self.directory / "institutions.json"
+        temporary = self.directory / (".institutions-" + uuid.uuid4().hex + ".tmp")
+        try:
+            temporary.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", "utf-8")
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return record
 
     def cached(
         self, kind: str, key: str, *, max_age_hours: int | None = None, now: datetime | None = None

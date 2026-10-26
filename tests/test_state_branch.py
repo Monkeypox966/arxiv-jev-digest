@@ -6,6 +6,7 @@ import subprocess
 import pytest
 from conftest import ROOT
 
+from arxiv_digest.models import InstitutionAssessment
 from arxiv_digest.store import Store
 
 
@@ -40,9 +41,23 @@ def test_real_git_state_roundtrip_without_credentials_on_disk(tmp_path, monkeypa
             if name == "first":
                 store.cache("decision", "key", {"score": 0.95})
                 store.prepare("hashed-recipient", "profile", ["paper-1"], ["paper-1"])
+                store.remember_institution(
+                    "research-scope",
+                    InstitutionAssessment(
+                        institution="ERI",
+                        canonical_name="Example Research Institute",
+                        score=0.8,
+                        status="assessed",
+                        confidence=0.9,
+                        sources=["https://example.edu/"],
+                    ),
+                    ["eri", "example research institute"],
+                )
             else:
                 assert store.cached("decision", "key") == {"score": 0.95}
                 assert len(store.pending()) == 1
+                assert store.learned_institution("research-scope", "eri")[0].score == 0.8
+                assert (workspace / ".state/institutions.json").is_file()
         state_module.main(["save"])
         state_module.main(["save"])  # An unchanged database is a successful no-op.
         disk_config = (workspace / ".state/.git/config").read_text(encoding="utf-8")

@@ -12,7 +12,7 @@ on:
       mode:
         description: Preview never emails; daily checks today's delivery; send forces a normal run.
         type: choice
-        options: [preview, daily, send, inspect, delivery_test, recover_preview, recover_send, reset_checkpoints, resolve_sent, resolve_retry]
+        options: [preview, daily, send, inspect, institutions, delivery_test, recover_preview, recover_send, reset_checkpoints, resolve_sent, resolve_retry]
         default: preview
       delivery_id:
         description: Only for resolve modes; check the recipient inbox first.
@@ -26,6 +26,10 @@ on:
         description: Only for recover modes; explicit submission window, 1-31 days.
         type: number
         default: 7
+        required: false
+      institution_names:
+        description: Only for institutions mode; 1-5 names, one per line. Uses DeepSeek, never emails.
+        type: string
         required: false
 
 permissions:
@@ -63,6 +67,7 @@ jobs:
           RUN_MODE: ${{ inputs.mode || 'send' }}
           DELIVERY_ID: ${{ inputs.delivery_id }}
           PAPER_IDS: ${{ inputs.paper_ids }}
+          INSTITUTION_NAMES: ${{ inputs.institution_names }}
           RECOVERY_DAYS: ${{ inputs.recovery_days || 7 }}
           AUTO_DAILY: ${{ github.event_name == 'schedule' || inputs.mode == 'daily' }}
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
@@ -93,6 +98,10 @@ jobs:
               read -r -a PAPER_ID_ARGS <<< "$PAPER_IDS"
               uv run --locked --no-dev arxiv-digest inspect --refresh "${PAPER_ID_ARGS[@]}"
               ;;
+            institutions)
+              mapfile -t INSTITUTION_ARGS <<< "$INSTITUTION_NAMES"
+              uv run --locked --no-dev arxiv-digest institutions --assess "${INSTITUTION_ARGS[@]}"
+              ;;
             resolve_sent) uv run --locked --no-dev arxiv-digest resolve "$DELIVERY_ID" --outcome sent ;;
             resolve_retry) uv run --locked --no-dev arxiv-digest resolve "$DELIVERY_ID" --outcome retry ;;
             *) exit 2 ;;
@@ -110,6 +119,7 @@ jobs:
           path: |
             output/
             .state/digest.sqlite3
+            .state/institutions.json
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14

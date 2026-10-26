@@ -370,6 +370,7 @@ def _run(
                         ):
                             institution_assessments[key] = assessor.assess(name)
                 institution_lookups = assessor.lookups
+                store.export_institutions()
             rankings = {
                 p.id: rank_paper(
                     p,

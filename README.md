@@ -29,7 +29,7 @@
 | `[[exclusions]]` | 要排除的主题；换方向时也应检查这些规则 |
 | `selection.top_k` | 三部分合计上限，默认 15；不降低筛选门槛凑数 |
 | `selection.min_score` | 相关性门槛，默认 0.60 |
-| `ranking` | 相关性通过后按机构偏好过滤、排序，默认权重 35%；详见[排序配置](docs/ranking.md) |
+| `ranking` | 相关性筛选后按机构偏好排序（35%）；核实新机构并自动记住其分数及简称，详见[配置](docs/ranking.md) |
 | `deepseek.language` | 摘要语言，默认简体中文 |
 | `email` | SMTP 服务器、端口、安全模式和邮件标题 |
 

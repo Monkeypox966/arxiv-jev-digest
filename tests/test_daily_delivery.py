@@ -162,7 +162,7 @@ def test_v2_state_adds_acknowledgement_timestamp_without_losing_history(config):
     for _ in range(2):
         with Store(config.state_dir) as store:
             assert store.delivered_today(recipient_key("reader@example.com"), now=NOW)
-            assert store.db.execute("PRAGMA user_version").fetchone()[0] == 4
+            assert store.db.execute("PRAGMA user_version").fetchone()[0] == 5
             assert not store.pending()
 
 

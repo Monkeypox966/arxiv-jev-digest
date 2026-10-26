@@ -296,7 +296,7 @@ def test_real_v1_database_migrates_to_v2_without_losing_pending_or_history(tmp_p
     write_legacy_v1(tmp_path)
     for attempt in range(2):  # migration and a second normal reopen are both safe
         with Store(tmp_path) as store:
-            assert store.db.execute("PRAGMA user_version").fetchone()[0] == 4
+            assert store.db.execute("PRAGMA user_version").fetchone()[0] == 5
             assert store.cached("decision", "legacy-key") == {"score": 0.9}
             assert not store.eligible("reader", "new-profile", "sent-before-upgrade", now=NOW)
             assert not store.eligible("reader", "profile", "reviewed-before-upgrade", now=NOW)

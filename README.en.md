@@ -27,7 +27,7 @@ Edit the existing fields in [`config.toml`](config.toml):
 | `[[exclusions]]` | Topics to exclude; review these when changing research areas |
 | `selection.top_k` | Total limit across all three sections; default: 15, with no minimum quota |
 | `selection.min_score` | Relevance threshold; default: 0.60 |
-| `ranking` | Institution filtering and ranking after relevance screening; default weight: 35%; see [ranking configuration](docs/ranking.md) |
+| `ranking` | Institution ranking after relevance screening (35%); verified new institutions and aliases are learned persistently; see [configuration](docs/ranking.md) |
 | `deepseek.language` | Summary language; change `"简体中文"` to `"English"` for English summaries |
 | `email` | SMTP host, port, security mode and subject prefix |
 
