@@ -30,6 +30,20 @@
 
 配置仍在 `config.toml` 的 `[enrichment]`：`incomplete_cache_hours = 24`，`retry_missing_affiliations = true`，`retry_attempts = 3`，`retry_limit_per_run = 20`。补查队列只针对未发送且尚未提取到机构的候选；已有机构则不再补作者对应。
 
+## 2026-10-26 机构清单真实验证
+
+[线上 inspect](https://github.com/Monkeypox966/arxiv-jev-digest/actions/runs/40262286250) 对三篇论文使用新提示词重新提取，全部成功；没有调用 Jev、没有发邮件、没有推进论文发送或公告历史。
+
+| 论文 | 提取到的原始署名单位 | 评分结果 |
+| --- | --- | --- |
+| ViT-H 2610.32966v1 | 9 条，含北大不同院系、BIGAI、XS Vision 等 | 命中北大，机构分 1.0 |
+| BeyondMimic 2508.08241v4 | Berkeley、Stanford | 机构分 1.0 |
+| Humanoid-GPT 2606.03985v1 | 清华、Galbot、上海交大、北大、Shanghai Qi Zhi Institute | 机构分 1.0 |
+
+三篇的新提取结果均没有作者对应列表。合计 5 次 DeepSeek 调用，服务报告输入 11,388 tokens、输出 458 tokens；全部从 abs / HTML 得到足够的机构和项目资料，没有因缺作者对应而继续查 PDF 或项目页。原始单位清单用于匹配，重复院系不会累加机构分。
+
+本地 299 项回归测试通过。已删除不再执行的逐作者数字标号校正及其专属测试，替换为机构直接评分、旧缓存复用、去重合并、补查队列清理及来源校验测试。
+
 ## 历史核查记录说明
 
 以下为旧版逐作者核查时发现的来源差异，保留作历史资料。现行策略不再执行逐作者映射或数字标号校正。

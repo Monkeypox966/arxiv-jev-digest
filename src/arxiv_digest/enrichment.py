@@ -85,7 +85,12 @@ def text_urls(text: str) -> list[str]:
 
 
 def checked_details(raw: str, paper: Paper, document: str, candidates: list[str]) -> PaperDetails:
-    details = PaperDetails.model_validate_json(raw)
+    payload = json.loads(raw)
+    if isinstance(payload, dict) and isinstance(payload.get("affiliations"), list):
+        for item in payload["affiliations"]:
+            if isinstance(item, dict):
+                item.pop("authors", None)
+    details = PaperDetails.model_validate(payload)
     if details.project_url and details.project_url not in candidates:
         raise ValueError("Project URL must be present in the supplied source links")
     source = normalize_text(document)

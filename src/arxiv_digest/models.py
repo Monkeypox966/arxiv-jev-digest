@@ -83,6 +83,11 @@ class Affiliation(BaseModel):
     authors: list[str] = Field(default_factory=list)  # Legacy data only; not required or scored.
     source: str | None = None
 
+    @field_validator("institution", mode="before")
+    @classmethod
+    def strip_institution(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
     @field_validator("source")
     @classmethod
     def safe_source(cls, value):

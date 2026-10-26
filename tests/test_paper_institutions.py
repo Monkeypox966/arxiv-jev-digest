@@ -18,6 +18,14 @@ from arxiv_digest.store import Store, recipient_key
 NOW = datetime(2026, 10, 26, 4, tzinfo=UTC)
 
 
+@pytest.mark.parametrize("ignored_authors", [None, "unknown", ["Wrong Author"], {"bad": "mapping"}])
+def test_irrelevant_author_field_cannot_block_institution_extraction(paper, ignored_authors):
+    data = {"affiliations": [{"institution": " MIT ", "authors": ignored_authors}]}
+    parsed = checked_details(json.dumps(data), paper, "Institutions: MIT", [])
+    assert parsed.affiliations[0].institution == "MIT"
+    assert parsed.affiliations[0].authors == []
+
+
 @pytest.mark.parametrize("individual_source", [True, False])
 def test_institution_scores_without_any_author_correspondence(config, paper, individual_source):
     details = PaperDetails(
