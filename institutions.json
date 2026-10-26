@@ -1,4 +1,28 @@
 {
   "schema_version": 1,
-  "institutions": []
+  "institutions": [
+    {
+      "institution": "MPI-IS",
+      "canonical_name": "Max Planck Institute for Intelligent Systems",
+      "score": 0.8,
+      "status": "rule",
+      "confidence": 1.0,
+      "reason": "机构登记归一化后命中人工偏好名单。",
+      "sources": [
+        "https://ror.org/04fq9j139"
+      ],
+      "identity_sources": [
+        "https://ror.org/04fq9j139"
+      ],
+      "identity_evidence": [],
+      "evidence": [],
+      "assessed_on": "2026-10-26T19:37:22.594970+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "max planck institute for intelligent systems",
+        "mpi-is"
+      ]
+    }
+  ]
 }
