@@ -4,6 +4,7 @@ import argparse
 import json
 import logging
 import sqlite3
+from datetime import time
 from pathlib import Path
 
 import httpx
@@ -26,6 +27,16 @@ from .pipeline import run
 from .store import Store, recipient_key
 
 
+def daily_time(value: str) -> time:
+    try:
+        parsed = time.fromisoformat(value)
+        if len(value) != 5 or parsed.tzinfo is not None:
+            raise ValueError
+        return parsed
+    except ValueError:
+        raise argparse.ArgumentTypeError("Use local time HH:MM, e.g. 09:30") from None
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Jev → DeepSeek → email daily arXiv digest")
     parser.add_argument("--config", type=Path, default=Path("config.toml"))
@@ -43,6 +54,12 @@ def main(argv=None) -> int:
         "--persist-outbox",
         action="store_true",
         help="Persist the pending delivery with the trusted Actions state helper before SMTP",
+    )
+    execute.add_argument(
+        "--daily-after",
+        type=daily_time,
+        metavar="HH:MM",
+        help="Automatic daily delivery after local HH:MM; skip recipients already sent today",
     )
     execute.add_argument(
         "--recovery-days",
@@ -157,6 +174,7 @@ def main(argv=None) -> int:
                     config,
                     client,
                     dry_run=args.dry_run,
+                    daily_after=args.daily_after,
                     outbox_hook=(lambda: persist_outbox(config_path.parent))
                     if args.persist_outbox
                     else None,

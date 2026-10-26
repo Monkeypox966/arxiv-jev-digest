@@ -391,13 +391,14 @@ def test_cli_recovery_window_is_in_memory_only_and_preview_has_no_outbox_hook(
     original = path.read_bytes()
     calls = []
 
-    def observed_run(settings, _client, *, dry_run, outbox_hook):
+    def observed_run(settings, _client, *, dry_run, outbox_hook, daily_after):
         calls.append(settings)
         assert settings.arxiv.source == "api"
         assert settings.arxiv.lookback_days == 7
         assert settings.arxiv.catch_up is False
         assert dry_run is True
         assert outbox_hook is None
+        assert daily_after is None
         return {"emails_sent": 0}
 
     monkeypatch.setattr("arxiv_digest.cli.run", observed_run)

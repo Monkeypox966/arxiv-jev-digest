@@ -5,7 +5,7 @@ import logging
 import uuid
 from collections.abc import Callable, Iterable
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
-from datetime import datetime
+from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -76,6 +76,7 @@ def run(
     mailer_factory=SMTPMailer,
     now: datetime | None = None,
     outbox_hook: Callable[[], None] | None = None,
+    daily_after: time | None = None,
 ) -> dict:
     now = (now or datetime.now(ZoneInfo(config.timezone))).astimezone(ZoneInfo(config.timezone))
     run_dir = config.output_dir / (now.strftime("%Y%m%d-%H%M%S-") + uuid.uuid4().hex[:8])
@@ -83,6 +84,8 @@ def run(
     usage = UsageTracker(config.budget)
     health = {"schema_version": 1, "started_at": now.isoformat(), "status": "running"}
     try:
+        if dry_run and daily_after is not None:
+            raise ValueError("Daily delivery guard cannot be used with a dry run")
         result = _run(
             config,
             client,
@@ -92,6 +95,7 @@ def run(
             run_dir=run_dir,
             usage=usage,
             outbox_hook=outbox_hook,
+            daily_after=daily_after,
         )
         health.update(status="success", stats=result)
         health["warnings"] = [
@@ -128,14 +132,34 @@ def _run(
     run_dir,
     usage: UsageTracker,
     outbox_hook: Callable[[], None] | None = None,
+    daily_after: time | None = None,
 ) -> dict:
-    validate_credentials(config, send=not dry_run)
     addresses = recipients(config)
     # A dry run without configured recipients uses a synthetic preview identity.
     targets = addresses or ["preview@example.invalid"]
     profile = profile_key(config)
+    daily_stats = {}
+    if daily_after is not None:
+        if not addresses:
+            raise ValueError("Daily delivery guard requires configured recipients")
+        due = datetime.combine(now.date(), daily_after, tzinfo=now.tzinfo)
+        daily_stats = {
+            "daily_delivery": True,
+            "scheduled_for": due.isoformat(),
+            "start_delay_seconds": max(0, int((now - due).total_seconds())),
+            "skipped_recipients": 0,
+        }
+        if now < due:
+            LOG.info("Daily delivery is not due until %s", due.isoformat())
+            return {
+                **daily_stats,
+                "skip_reason": "before_daily_send_time",
+                "emails_sent": 0,
+                "selected_unique": 0,
+                "usage": usage.snapshot(),
+            }
     with Store(config.state_dir) as store:
-        store.prune(config.retention.cache_days)
+        store.prune(config.retention.cache_days, now=now)
         if not dry_run:
             for address in targets:
                 pending = store.pending(recipient_key(address))
@@ -144,6 +168,23 @@ def _run(
                         f"Unresolved email attempt {pending[0]['id']}; "
                         "check inbox, then use `pending` and `resolve`"
                     )
+        if daily_after is not None:
+            targets = [
+                address
+                for address in targets
+                if not store.delivered_today(recipient_key(address), now=now)
+            ]
+            daily_stats["skipped_recipients"] = len(addresses) - len(targets)
+            if not targets:
+                LOG.info("Daily digest already delivered to all recipients; no APIs or SMTP used")
+                return {
+                    **daily_stats,
+                    "skip_reason": "already_delivered_today",
+                    "emails_sent": 0,
+                    "selected_unique": 0,
+                    "usage": usage.snapshot(),
+                }
+        validate_credentials(config, send=not dry_run)
         catch_up = config.arxiv.source == "latest" and config.arxiv.catch_up
         source_keys = (
             {
@@ -359,6 +400,7 @@ def _run(
             if completed % 5 == 0 or completed == len(unsummarized):
                 LOG.info("DeepSeek summary progress: %d/%d", completed, len(unsummarized))
         stats = {
+            **daily_stats,
             "fetched": len(fetched),
             "metadata_retries": len(retried),
             "new_candidates": len(wanted),

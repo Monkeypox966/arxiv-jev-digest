@@ -68,13 +68,15 @@ Open **Actions → Daily arXiv Digest → Run workflow**:
 
 1. Run `delivery_test` to send one test email without calling any models. Confirm that your email settings work.
 2. Run `preview` to fetch papers and call the models without sending email. Download the report from **Artifacts** and open `digest.html` to check the selection and summaries.
-3. Run `send` for normal screening and delivery. Scheduled runs use this mode automatically.
+3. Run `send` for normal screening and delivery. The `daily` mode uses the automatic delivery guard and skips recipients already sent a digest today.
 
 <br>
 
 ## Step 5: Check the daily schedule
 
-The default schedule starts daily at **09:30 Beijing time (01:30 UTC)**; email is sent after processing completes. To change it, edit `cron: '30 1 * * *'` in [`daily.yml`](.github/workflows/daily.yml). This expression uses UTC; `timezone` in `config.toml` only changes report timestamps.
+The primary run is scheduled for **09:30 Beijing time (01:30 UTC)**, with hourly fallback checks at **09:47–17:47 Beijing time**. Automatic runs check each recipient's acknowledged daily delivery, including empty digests. Already-delivered recipients are skipped before fetching papers or calling models. Manual `send` deliveries count; `delivery_test` messages do not. Manual `send` itself remains an explicit additional run.
+
+To change the target time, update the primary cron, fallback window and `--daily-after 09:30` in [`daily.yml`](.github/workflows/daily.yml). Cron uses UTC; the daily guard uses `timezone` from `config.toml`.
 
 **An empty digest is sent even when there are no new matching papers** (`email.send_empty = true`), explaining that no matches are available. Sending an empty digest adds no model calls; any new candidates still require decision model screening. Previously delivered papers are not resent, and weekends may reuse the latest announcement batch. Set this option to `false` to skip empty digests. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 

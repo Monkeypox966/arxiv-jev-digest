@@ -212,6 +212,22 @@ def actions_summary(config: Config) -> dict:
         lines.append(f"| {label} | {value} |")
     if not health.get("usage", {}).get("usage_complete", True):
         lines += ["", "部分服务未返回完整 token 用量；预算仍保留预估值，未按零消耗处理。"]
+    if stats.get("scheduled_for"):
+        lines += [
+            "",
+            "计划发送时间：" + stats["scheduled_for"],
+            f"程序开始处理时已延迟：{stats['start_delay_seconds']} 秒。",
+            f"当天已送达而跳过的收件人数：{stats.get('skipped_recipients', 0)}。",
+        ]
+    if stats.get("skip_reason"):
+        lines += [
+            "",
+            "跳过原因："
+            + {
+                "before_daily_send_time": "尚未到当天发送时间；不抓取、不调用模型、不发邮件。",
+                "already_delivered_today": "当天日报已经发送；不抓取、不调用模型、不重复发信。",
+            }.get(stats["skip_reason"], stats["skip_reason"]),
+        ]
     if health.get("error"):
         lines += ["", "错误：" + health["error"].replace("\n", " ")]
     if health.get("recovery_required"):

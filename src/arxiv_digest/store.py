@@ -65,6 +65,8 @@ class Store:
             self.db.execute(
                 "ALTER TABLE outbox ADD COLUMN checkpoint_updates TEXT NOT NULL DEFAULT '[]'"
             )
+        if "sent_at" not in columns:
+            self.db.execute("ALTER TABLE outbox ADD COLUMN sent_at TEXT NOT NULL DEFAULT ''")
         self.db.execute("PRAGMA user_version = 2")
         self.db.commit()
 
@@ -229,6 +231,22 @@ class Store:
         ).fetchall()
         return [dict(zip(("id", "recipient_hash", "created"), row, strict=True)) for row in rows]
 
+    def delivered_today(self, recipient: str, *, now: datetime) -> bool:
+        """Count acknowledged digests, including empty ones; SMTP tests do not count.
+
+        Older state has no acknowledgement timestamp, so use its preparation time.
+        Compare in the caller's configured timezone, never the runner's timezone.
+        """
+        rows = self.db.execute(
+            "SELECT coalesce(nullif(sent_at, ''), created) FROM outbox "
+            "WHERE recipient=? AND status='sent' AND profile!='delivery-test-v1'",
+            (recipient,),
+        )
+        return any(
+            datetime.fromisoformat(row[0]).astimezone(now.tzinfo).date() == now.date()
+            for row in rows
+        )
+
     def prepare(
         self,
         recipient: str,
@@ -263,7 +281,7 @@ class Store:
             )
         return delivery_id
 
-    def resolve(self, delivery_id: str, outcome: str):
+    def resolve(self, delivery_id: str, outcome: str, *, now: datetime | None = None):
         row = self.db.execute(
             "SELECT recipient, profile, candidates, selected, status, source, announcement, "
             "checkpoint_updates "
@@ -290,14 +308,17 @@ class Store:
                 self._advance_checkpoint(recipient, source, announcement)
                 for source_key, date in json.loads(updates):
                     self._advance_checkpoint(recipient, source_key, date)
-                self.db.execute("UPDATE outbox SET status='sent' WHERE id=?", (delivery_id,))
+                self.db.execute(
+                    "UPDATE outbox SET status='sent', sent_at=? WHERE id=?",
+                    ((now or datetime.now(UTC)).astimezone(UTC).isoformat(), delivery_id),
+                )
             elif outcome == "retry":
                 self.db.execute("DELETE FROM outbox WHERE id=?", (delivery_id,))
             else:
                 raise ValueError("outcome must be sent or retry")
 
-    def prune(self, days: int):
-        cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
+    def prune(self, days: int, *, now: datetime | None = None):
+        cutoff = ((now or datetime.now(UTC)).astimezone(UTC) - timedelta(days=days)).isoformat()
         with self.db:
             self.db.execute("DELETE FROM cache WHERE created < ?", (cutoff,))
             self.db.execute("DELETE FROM outbox WHERE status='sent' AND created < ?", (cutoff,))

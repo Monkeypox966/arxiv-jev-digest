@@ -3,13 +3,16 @@ name: Daily arXiv Digest
 on:
   schedule:
     # 01:30 UTC = 09:30 Asia/Shanghai; edit this cron to change start time.
+    # Keep --daily-after below in sync when changing the target local time.
     - cron: '30 1 * * *'
+    # Fallback checks at 09:47–17:47 Beijing time. Acknowledged daily mail is not resent.
+    - cron: '47 1-9 * * *'
   workflow_dispatch:
     inputs:
       mode:
-        description: Preview uses real APIs but sends no email; send enables delivery.
+        description: Preview never emails; daily checks today's delivery; send forces a normal run.
         type: choice
-        options: [preview, send, inspect, delivery_test, recover_preview, recover_send, reset_checkpoints, resolve_sent, resolve_retry]
+        options: [preview, daily, send, inspect, delivery_test, recover_preview, recover_send, reset_checkpoints, resolve_sent, resolve_retry]
         default: preview
       delivery_id:
         description: Only for resolve modes; check the recipient inbox first.
@@ -61,6 +64,7 @@ jobs:
           DELIVERY_ID: ${{ inputs.delivery_id }}
           PAPER_IDS: ${{ inputs.paper_ids }}
           RECOVERY_DAYS: ${{ inputs.recovery_days || 7 }}
+          AUTO_DAILY: ${{ github.event_name == 'schedule' || inputs.mode == 'daily' }}
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           DECISION_API_KEY: ${{ secrets.DECISION_API_KEY }}
@@ -74,7 +78,13 @@ jobs:
         run: |
           case "$RUN_MODE" in
             preview) uv run --locked --no-dev arxiv-digest run --dry-run ;;
-            send) uv run --locked --no-dev arxiv-digest run --persist-outbox ;;
+            send|daily)
+              if [ "$AUTO_DAILY" = 'true' ]; then
+                uv run --locked --no-dev arxiv-digest run --persist-outbox --daily-after 09:30
+              else
+                uv run --locked --no-dev arxiv-digest run --persist-outbox
+              fi
+              ;;
             delivery_test) uv run --locked --no-dev arxiv-digest test-email --persist-outbox ;;
             recover_preview) uv run --locked --no-dev arxiv-digest run --dry-run --recovery-days "$RECOVERY_DAYS" ;;
             recover_send) uv run --locked --no-dev arxiv-digest run --persist-outbox --recovery-days "$RECOVERY_DAYS" ;;
@@ -107,7 +117,7 @@ jobs:
         if: ${{ always() && steps.restore.outcome == 'success' }}
         run: uv run --locked --no-dev arxiv-digest status
       - name: Notify configured recipients after a send-mode failure
-        if: ${{ failure() && (github.event_name == 'schedule' || inputs.mode == 'send' || inputs.mode == 'recover_send') }}
+        if: ${{ failure() && (github.event_name == 'schedule' || inputs.mode == 'daily' || inputs.mode == 'send' || inputs.mode == 'recover_send') }}
         env:
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}

@@ -68,13 +68,15 @@ weight = 1.0
 
 1. 选择 `delivery_test`：只发送一封测试邮件，不调用模型，先确认邮箱配置可用。
 2. 选择 `preview`：真实抓取并调用模型，但不发邮件。完成后下载 **Artifacts** 中的报告，打开 `digest.html` 检查筛选与摘要效果。
-3. 选择 `send`：正常筛选并发送日报。后续定时任务自动按此模式运行。
+3. 选择 `send`：正常筛选并发送日报。`daily` 模式与自动任务相同，当天已发送的收件人会跳过。
 
 <br>
 
 ## 第五步：确认每天自动运行
 
-默认每天**北京时间 09:30 启动**，完成筛选后发信。修改 [`daily.yml`](.github/workflows/daily.yml) 中的 `cron: '30 1 * * *'` 可调整时间，当前表达式使用 UTC；`config.toml` 的 `timezone` 只影响报告显示。
+主任务计划每天**北京时间 09:30 启动**，备用任务在 **09:47–17:47 每小时检查一次**。按收件人核对当天已确认的日报（含空日报），已发送则不抓取、不调用模型、不重复发信；手动 `send` 补发也计入，`delivery_test` 不计入。手动 `send` 本身仍可主动再次发送。
+
+修改时间时同步调整 [`daily.yml`](.github/workflows/daily.yml) 的主任务 cron、备用时间范围及 `--daily-after 09:30`。cron 使用 UTC；每日去重与最早发送时间按 `config.toml` 的 `timezone` 判断。
 
 **没有新增匹配论文时也发送空日报**（`email.send_empty = true`），邮件会说明本次无匹配论文。空日报本身不额外调用模型；如有新候选，仍需调用决策模型判断相关性。已发送论文不会重发，周末可能继续读取上一公告批次。设为 `false` 可关闭空日报。GitHub 定时任务可能延迟或漏触发，并非准点投递服务；超过 60 天无仓库活动也可能自动停用。[官方说明](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 
