@@ -2,6 +2,8 @@
 
 验证日期：2026-10-24，Asia/Shanghai。
 
+机构及简称自动学习的后续联调见 [2026-10-26 验证记录](institution-learning-validation.md)。
+
 以下结果来自真实 arXiv、TypeSafe Jev、DeepSeek 和 QQ SMTP 调用。离线演示不计入这些结果；记录不包含密钥、授权码或个人邮箱地址。
 
 ## 自动化回归
