@@ -123,7 +123,7 @@ Check **Actions → latest run → Summary** for its trigger, outcome, selection
 - **Failed:** inspect the error and `health.json`; check API balance, Secrets and SMTP credentials.
 - **Pending delivery:** check the inbox and spam folder, then follow the [recovery guide](docs/operations.md) before retrying.
 
-The workflow creates a `digest-state` branch for persistent history and caches. Keep that branch and the workflow's `contents: write` permission. Reports and a recovery database are uploaded as Actions Artifacts.
+The workflow creates a `digest-state` branch for persistent history, caches and learned institutions. Keep that branch and the workflow's `contents: write` permission. Reports and a recovery database are uploaded as Actions Artifacts.
 
 <br>
 

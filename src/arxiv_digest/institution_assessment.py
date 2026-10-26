@@ -39,7 +39,7 @@ class InstitutionAssessor:
     def key(self, identifier):
         return fingerprint(
             [
-                "institution-assessment-v5-strength-not-relevance",
+                "institution-assessment-v6-category-strength",
                 normalize(identifier),
                 [item.model_dump() for item in self.config.ranking.institutions],
                 self.config.ranking.neutral_score,
@@ -412,9 +412,10 @@ class InstitutionAssessor:
                 assessment = assessment.model_copy(update={"institution": name})
             elif pages := pages if pages is not None else self.evidence(website, canonical):
                 assessment = self.deepseek.complete_json(
-                    "Evaluate an institution's research-strength preference for these topics. "
+                    "Evaluate an institution's documented research strength in the supplied "
+                    "broad arXiv research categories, not its match to specific paper topics. "
                     "Paper relevance has already been screened separately. Assess documented "
-                    "institutional research strength, including related robotics and AI work; "
+                    "institutional research strength, including related research achievements; "
                     "do not repeat paper relevance screening or require the institution to "
                     "cover every listed niche. Concrete related research achievements count "
                     "even without an exact topic-keyword match. "
@@ -434,7 +435,7 @@ class InstitutionAssessor:
                     {
                         "institution": name,
                         "canonical_name": canonical,
-                        "topics": [item.label for item in self.config.interests],
+                        "research_categories": self.config.arxiv.categories,
                         "pages": pages,
                     },
                     lambda raw: self.parse(raw, name, canonical, pages),

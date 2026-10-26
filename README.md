@@ -125,7 +125,7 @@ GitHub Actions 已传入上述三个 Secret；其他服务的密钥推荐保存�
 - **运行失败**：查看错误和 `health.json`；核对 API 余额、Secrets、SMTP 授权码。
 - **存在 pending**：先核查收件箱与垃圾箱，再按[恢复手册](docs/operations.md)确认，避免重复投递。
 
-发送历史、缓存保存在自动创建的 `digest-state` 分支，需保留工作流的 `contents: write` 权限和状态分支。报告和恢复数据库保存在 Actions Artifacts。
+发送历史、缓存和自动学习的机构名单保存在 `digest-state` 分支，需保留工作流的 `contents: write` 权限和状态分支。报告和恢复数据库保存在 Actions Artifacts。
 
 <br>
 
