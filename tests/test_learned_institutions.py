@@ -235,6 +235,7 @@ def test_neutral_assessment_without_quotes_is_valid_and_not_learned(config):
         result = assessor.parse(raw, "RRI", NAME, {SITE: QUOTE})
         assessor.remember(result)
         assert result.status == "neutral" and result.canonical_name == NAME
+        assert result.confidence == 0.9
         assert result.sources == [SITE]
         assert store.export_institutions()["institutions"] == []
 

@@ -318,6 +318,12 @@ class InstitutionAssessor:
         ):
             neutral = self.neutral(name, assessment.reason or "机构研究资料不足，使用中性分。")
             neutral.canonical_name = canonical
+            neutral.confidence = assessment.confidence
+            if assessment.confidence < self.config.ranking.assessment_min_confidence:
+                neutral.reason = (
+                    f"机构评估置信度不足（{assessment.confidence:.2f}），使用中性分。"
+                    + neutral.reason
+                )[:1600]
             neutral.sources = list(pages)
             return neutral
         if not assessment.evidence:
