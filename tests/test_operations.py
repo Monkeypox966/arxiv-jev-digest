@@ -81,7 +81,7 @@ def test_inspect_requires_only_deepseek_never_sends_and_reuses_cache(config, pap
         health = json.loads((directory / "health.json").read_text("utf-8"))
         usage = json.loads((directory / "usage.json").read_text("utf-8"))
         assert record["papers"][0]["cached"] is expected_cached
-        assert record["papers"][0]["completeness"]["affiliation_coverage"] == 1
+        assert record["papers"][0]["completeness"]["institutions_found"] is True
         assert result["emails_sent"] == record["emails_sent"] == 0
         assert health["status"] == "success"
         assert health["stats"]["inspected"] == 1
@@ -151,7 +151,7 @@ def test_actions_summary_appends_only_health_metrics_and_no_credentials(
     monkeypatch.setenv("DEEPSEEK_API_KEY", "model-credential-do-not-display")
     health = {
         "status": "failed",
-        "stats": {"fetched": 69, "selected_unique": 8, "emails_sent": 0, "metadata_partial": 2},
+        "stats": {"fetched": 69, "selected_unique": 8, "emails_sent": 0, "metadata_missing": 2},
         "usage": {"usage_complete": False, "totals": {"jev_calls": 69, "deepseek_calls": 12}},
         "error": "Provider unavailable\ntry later",
         "recovery_required": True,
@@ -161,7 +161,7 @@ def test_actions_summary_appends_only_health_metrics_and_no_credentials(
     text = path.read_text("utf-8")
     assert text.startswith("Existing summary\n")
     assert "arXiv 候选 | 69" in text
-    assert "机构映射不完整 | 2" in text
+    assert "尚未提取署名机构 | 2" in text
     assert "Provider unavailable try later" in text
     assert "预算仍保留预估值" in text
     assert "未自动推进检查点" in text

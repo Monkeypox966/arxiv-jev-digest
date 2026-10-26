@@ -60,15 +60,11 @@ def test_does_not_confuse_physical_intelligence_lab_with_pi_company(paper):
     assert company.institution_score == 1
 
 
-@pytest.mark.parametrize("missing", ["sources", "authors", "wrong_author", "affiliations"])
+@pytest.mark.parametrize("missing", ["sources", "affiliations"])
 def test_missing_evidence_is_unknown_and_not_guessed(paper, missing):
     value = details(paper, "MIT")
     if missing == "sources":
         value.sources = []
-    elif missing == "authors":
-        value.affiliations[0].authors = []
-    elif missing == "wrong_author":
-        value.affiliations[0].authors = ["Famous Person"]
     else:
         value.affiliations = []
     settings = RankingSettings(enabled=True)

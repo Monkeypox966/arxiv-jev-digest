@@ -217,12 +217,17 @@ class Store:
         ).fetchall()
         return [json.loads(row[0]) for row in rows]
 
-    def clear_metadata_retry(self, recipient: str, profile: str, paper: str):
+    def clear_metadata_retry(self, recipient: str, profile: str | None, paper: str):
         with self.db:
-            self.db.execute(
-                "DELETE FROM metadata_retry WHERE recipient=? AND profile=? AND paper=?",
-                (recipient, profile, paper),
-            )
+            if profile is None:
+                self.db.execute(
+                    "DELETE FROM metadata_retry WHERE recipient=? AND paper=?", (recipient, paper)
+                )
+            else:
+                self.db.execute(
+                    "DELETE FROM metadata_retry WHERE recipient=? AND profile=? AND paper=?",
+                    (recipient, profile, paper),
+                )
 
     def pending(self, recipient: str | None = None) -> list[dict]:
         sql = "SELECT id, recipient, created FROM outbox WHERE status='pending'"

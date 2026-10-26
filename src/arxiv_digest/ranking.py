@@ -37,12 +37,8 @@ def rank_paper(
 ) -> Ranking:
     matches = []
     has_verified_affiliation = False
-    if details and details.sources:
-        for affiliation in details.affiliations:
-            # A named institution without an established author mapping is not
-            # evidence that an author actually belongs to it.
-            if not set(affiliation.authors).intersection(paper.authors):
-                continue
+    if details:
+        for affiliation in details.verified_affiliations():
             has_verified_affiliation = True
             for rule in settings.institutions:
                 alias = next(

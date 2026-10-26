@@ -80,8 +80,7 @@ def test_enrichment_never_accepts_an_invented_project_or_institution(paper):
     with pytest.raises(ValueError, match="verbatim"):
         checked_details(json.dumps(valid), paper, document, [])
     valid["affiliations"][0] = {"institution": "Example University", "authors": ["Someone Else"]}
-    with pytest.raises(ValueError, match="unknown author"):
-        checked_details(json.dumps(valid), paper, document, [])
+    assert checked_details(json.dumps(valid), paper, document, []).affiliations[0].authors == []
 
 
 def test_bibliography_project_links_are_not_enrichment_candidates():

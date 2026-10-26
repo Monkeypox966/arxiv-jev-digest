@@ -23,7 +23,7 @@ from .config import Config, recipients, validate_credentials
 from .enrichment import Enricher
 from .http import ServiceError
 from .mailer import SMTPMailer, build_message
-from .models import Decision, Paper, PaperDetails, Pick, Summary
+from .models import Decision, Paper, Pick, Summary
 from .ranking import passes_institution_filter, rank_paper
 from .report import write_report
 from .store import Store, recipient_key
@@ -101,7 +101,7 @@ def run(
         health["warnings"] = [
             label
             for key, label in (
-                ("metadata_partial", "部分候选的作者机构仍不完整，报告已标注并保留来源。"),
+                ("metadata_missing", "部分候选尚未提取到有来源的署名机构，报告已标注。"),
                 ("metadata_unavailable", "部分元数据来源暂不可用，不等同于论文没有机构或项目。"),
             )
             if result.get(key)
@@ -312,15 +312,8 @@ def _run(
             enricher = Enricher(config, client, deepseek)
             for index, paper in enumerate(group.values(), 1):
                 key = enricher.key(paper)
-                cached = store.cached("details", key)
-                if cached and PaperDetails.model_validate(cached).needs_refresh(paper):
-                    cached = store.cached(
-                        "details",
-                        key,
-                        max_age_hours=config.enrichment.incomplete_cache_hours,
-                        now=now,
-                    )
-                detail = PaperDetails.model_validate(cached) if cached else enricher.enrich(paper)
+                cached = enricher.cached_details(store, paper, now=now)
+                detail = cached if cached is not None else enricher.enrich(paper)
                 details[paper.id] = detail
                 if not cached:
                     detail_calls += 1
@@ -413,10 +406,7 @@ def _run(
             ),
             "institution_unknown": sum(r.status == "unknown" for r in rankings.values()),
             "institution_unlisted": sum(r.status == "unlisted" for r in rankings.values()),
-            "metadata_partial": sum(
-                d.completeness(qualified_papers[id])["affiliation_coverage"] < 1
-                for id, d in details.items()
-            ),
+            "metadata_missing": sum(not d.verified_affiliations() for d in details.values()),
             "metadata_unavailable": sum(bool(d.failed_sources) for d in details.values()),
             "selected_unique": len(summary_papers),
             "emails_sent": 0,
@@ -446,7 +436,7 @@ def _run(
                 chosen = {p.id for p in selected[address]}
                 for paper in qualified[address]:
                     detail = details.get(paper.id)
-                    if detail and detail.completeness(paper)["affiliation_coverage"] < 1:
+                    if detail and not detail.verified_affiliations():
                         if paper.id not in chosen:
                             store.queue_metadata_retry(
                                 key,
@@ -457,7 +447,7 @@ def _run(
                                 max_attempts=config.enrichment.retry_attempts,
                             )
                     else:
-                        store.clear_metadata_retry(key, profile, paper.id)
+                        store.clear_metadata_retry(key, None, paper.id)
             candidates = [p.id for p in pools[address]]
             if not picks and not config.email.send_empty:
                 store.mark_reviewed(key, profile, candidates, checkpoint_updates=updates)

@@ -80,7 +80,7 @@ class Summary(BaseModel):
 class Affiliation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     institution: str = Field(min_length=1, max_length=400)
-    authors: list[str] = Field(default_factory=list)
+    authors: list[str] = Field(default_factory=list)  # Legacy data only; not required or scored.
     source: str | None = None
 
     @field_validator("source")
@@ -107,33 +107,29 @@ class PaperDetails(BaseModel):
     source_diagnostics: dict[str, list[str]] = Field(default_factory=dict)
 
     def completeness(self, paper: Paper) -> dict:
-        authors = set(paper.authors)
-        covered = {
-            author
-            for affiliation in self.affiliations
-            if affiliation.source or self.sources
-            for author in affiliation.authors
-            if author in authors
+        institutions = {
+            " ".join(affiliation.institution.casefold().split())
+            for affiliation in self.verified_affiliations()
         }
-        total = len(authors)
         project_found = bool(self.project_url and (self.project_source or self.sources))
         return {
             "project_found": project_found,
             "project_status": self.project_status,
             "affiliation_status": self.affiliation_status,
-            "covered_authors": len(covered),
-            "total_authors": total,
-            "affiliation_coverage": len(covered) / total if total else 0.0,
-            "missing_authors": [author for author in paper.authors if author not in covered],
+            "institutions_found": bool(institutions),
+            "institution_count": len(institutions),
         }
+
+    def verified_affiliations(self) -> list[Affiliation]:
+        return [
+            affiliation
+            for affiliation in self.affiliations
+            if affiliation.institution.strip() and (affiliation.source or self.sources)
+        ]
 
     def needs_refresh(self, paper: Paper) -> bool:
         completeness = self.completeness(paper)
-        return (
-            not completeness["project_found"]
-            or completeness["affiliation_coverage"] < 1
-            or not completeness["total_authors"]
-        )
+        return not completeness["project_found"] or not completeness["institutions_found"]
 
     @field_validator("project_url", "project_source")
     @classmethod

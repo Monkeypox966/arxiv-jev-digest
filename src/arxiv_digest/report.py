@@ -22,7 +22,7 @@ def author_line(pick: Pick) -> str:
 
 
 def institution_line(pick: Pick) -> str:
-    if not pick.details or not pick.details.affiliations:
+    if not pick.details or not pick.details.verified_affiliations():
         return "暂未核实"
     # Collapse departments only when verified ranking evidence supplies a parent name.
     canonical = (
@@ -30,7 +30,8 @@ def institution_line(pick: Pick) -> str:
     )
     names = list(
         dict.fromkeys(
-            canonical.get(item.institution, item.institution) for item in pick.details.affiliations
+            canonical.get(item.institution, item.institution)
+            for item in pick.details.verified_affiliations()
         )
     )
     text = " · ".join(names[:2])
@@ -100,7 +101,8 @@ def write_report(
     (directory / "digest.html").write_text(html, encoding="utf-8")
     (directory / "digest.txt").write_text(text, encoding="utf-8")
     record = {
-        "schema_version": 1,
+        "schema_version": 2,
+        "affiliation_basis": "paper_institutions",
         "generated_at": now.isoformat(),
         "demo": demo,
         "summary_basis": "title_and_abstract_only",

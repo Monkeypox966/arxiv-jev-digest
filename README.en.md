@@ -5,7 +5,7 @@ English | [简体中文](README.md)
 Screen new arXiv papers, generate summaries and deliver them by email. Runs on GitHub Actions without a server.
 The default setup uses Jev for screening and DeepSeek for Chinese summaries, tracks cs.RO robotics, and selects up to 10 papers per batch. Follow the steps below to use your own research interests and language.
 
-Emails prioritize contribution summaries, brief author/institution overviews and paper/project links. Scoring evidence, full author mappings and verification records remain in JSON reports.
+Emails prioritize contribution summaries, brief author/institution overviews and paper/project links. Ranking uses the paper's sourced institution list without individual author mappings. Full institution lists and source evidence remain in JSON reports.
 
 <br>
 

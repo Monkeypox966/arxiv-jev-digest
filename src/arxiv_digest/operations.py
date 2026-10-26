@@ -20,7 +20,6 @@ from .config import Config, recipients, require_env
 from .enrichment import Enricher
 from .http import ServiceError
 from .mailer import SMTPMailer, build_message
-from .models import PaperDetails
 from .store import Store, recipient_key
 from .usage import UsageTracker
 
@@ -67,15 +66,8 @@ def inspect_metadata(
         with Store(config.state_dir) as store:
             for paper in papers:
                 key = enricher.key(paper)
-                cached = None if refresh else store.cached("details", key)
-                if cached and PaperDetails.model_validate(cached).needs_refresh(paper):
-                    cached = store.cached(
-                        "details",
-                        key,
-                        now=now,
-                        max_age_hours=config.enrichment.incomplete_cache_hours,
-                    )
-                details = PaperDetails.model_validate(cached) if cached else enricher.enrich(paper)
+                cached = None if refresh else enricher.cached_details(store, paper, now=now)
+                details = cached if cached is not None else enricher.enrich(paper)
                 if not cached:
                     store.cache("details", key, details.model_dump(), now=now)
                 results.append(
@@ -88,7 +80,8 @@ def inspect_metadata(
                 )
         usage.assert_within_limits()
         record = {
-            "schema_version": 1,
+            "schema_version": 2,
+            "affiliation_basis": "paper_institutions",
             "operation": "inspect",
             "papers": results,
             "usage": usage.snapshot(),
@@ -202,7 +195,7 @@ def actions_summary(config: Config) -> dict:
         ("arXiv 候选", stats.get("fetched", stats.get("inspected", 0))),
         ("入选论文", stats.get("selected_unique", 0)),
         ("已发送日报", stats.get("emails_sent", 0)),
-        ("机构映射不完整", stats.get("metadata_partial", 0)),
+        ("尚未提取署名机构", stats.get("metadata_missing", 0)),
         ("待核查论文重试", stats.get("metadata_retries", 0)),
         ("JEV API 尝试", usage.get("jev_calls", 0)),
         ("DeepSeek API 尝试", usage.get("deepseek_calls", 0)),

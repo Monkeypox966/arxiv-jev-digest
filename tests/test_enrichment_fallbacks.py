@@ -247,50 +247,24 @@ def test_unrelated_project_page_cannot_supply_institutions(paper, prepare):
     assert result.project_url == PROJECT
 
 
-def test_partial_author_mapping_continues_and_project_only_fills_gaps(paper, prepare):
+def test_unknown_author_correspondence_does_not_cause_extra_source_requests(paper, prepare):
     paper = replace(paper, authors=["A. Author", "B. Author", "C. Author"])
-    html_url = f"https://arxiv.org/html/{paper.id}"
+    url = paper.metadata_html_url
     enricher, events = prepare(
         paper,
         html={
             paper.url: abs_page(paper, project=PROJECT),
-            html_url: "<article>A. Author: Paper University</article>",
-            PROJECT: (
-                f"<main><h1>{paper.title}</h1><p>A. Author B. Author C. Author</p>"
-                f'<a href="{paper.url}">Paper</a></main>'
-            ),
+            url: "<article>Paper University</article>",
         },
-        pdf=("A. Author B. Author: Paper University", []),
         extracted={
             paper.url: source_details(paper, paper.url, project=PROJECT),
-            html_url: source_details(
-                paper, html_url, affiliations=[("Paper University", ["A. Author"])]
-            ),
-            paper.pdf_url: source_details(
-                paper,
-                paper.pdf_url,
-                affiliations=[("Paper University", ["A. Author", "B. Author"])],
-            ),
-            PROJECT: source_details(
-                paper,
-                PROJECT,
-                affiliations=[
-                    ("Different University", ["A. Author", "B. Author"]),
-                    ("New University", ["C. Author"]),
-                ],
-            ),
+            url: source_details(paper, url, affiliations=[("Paper University", [])]),
         },
     )
     result = enricher.enrich(paper)
-    assert ("pdf", paper.pdf_url) in events
-    assert ("fetch", PROJECT) in events
-    mappings = {
-        author: {a.institution for a in result.affiliations if author in a.authors}
-        for author in paper.authors
-    }
-    assert mappings["A. Author"] == {"Paper University"}
-    assert mappings["B. Author"] == {"Paper University"}
-    assert mappings["C. Author"] == {"New University"}
+    assert [a.institution for a in result.affiliations] == ["Paper University"]
+    assert ("pdf", paper.pdf_url) not in events
+    assert ("fetch", PROJECT) not in events
 
 
 def test_later_source_failures_do_not_erase_abs_project(paper, prepare):
@@ -309,30 +283,24 @@ def test_later_source_failures_do_not_erase_abs_project(paper, prepare):
     assert paper.url in result.sources
 
 
-def test_damaged_html_author_markers_force_pdf_even_if_model_claims_complete(paper, prepare):
-    html_url = f"https://arxiv.org/html/{paper.id}"
+def test_lost_html_author_markers_do_not_discard_explicit_institutions(paper, prepare):
+    url = paper.metadata_html_url
+    html = (
+        '<article><span class="ltx_creator ltx_role_author">A. Author B. Author</span>'
+        "Affiliation: Paper University</article>"
+    )
     enricher, events = prepare(
         paper,
-        html={
-            paper.url: abs_page(paper, project=PROJECT),
-            html_url: '<article><span class="ltx_creator ltx_role_author">'
-            '<span class="ltx_personname">A. Author</span></span>Affiliation: [</article>',
-        },
-        pdf=("A. Author: Verified University", []),
+        html={paper.url: abs_page(paper, project=PROJECT), url: html},
         extracted={
             paper.url: source_details(paper, paper.url, project=PROJECT),
-            html_url: source_details(
-                paper, html_url, affiliations=[("Guessed University", paper.authors)]
-            ),
-            paper.pdf_url: source_details(
-                paper, paper.pdf_url, affiliations=[("Verified University", paper.authors)]
-            ),
+            url: source_details(paper, url, affiliations=[("Paper University", [])]),
         },
     )
     result = enricher.enrich(paper)
-    assert ("pdf", paper.pdf_url) in events
-    assert [a.institution for a in result.affiliations] == ["Verified University"]
-    assert result.affiliations[0].source == paper.pdf_url
+    assert [a.institution for a in result.affiliations] == ["Paper University"]
+    assert result.affiliations[0].source == url
+    assert ("pdf", paper.pdf_url) not in events
 
 
 @pytest.mark.parametrize(
