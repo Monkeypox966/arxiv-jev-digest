@@ -3,7 +3,7 @@
 English | [简体中文](README.md)
 
 Screen new arXiv papers, generate summaries and deliver them by email. Runs on GitHub Actions without a server.
-The default setup uses Jev for screening and DeepSeek for Chinese summaries, tracks cs.RO robotics, and selects up to 10 papers per batch. Follow the steps below to use your own research interests and language.
+The default setup discovers papers from [cs.RO `/new`](https://arxiv.org/list/cs.RO/new), screens them with Jev and generates Chinese summaries with DeepSeek. Emails have three sections: **new submissions, cross-lists and replacements**, with **up to 15 papers total**. Fewer qualifying papers means a shorter digest; thresholds are never lowered to fill the quota.
 
 Emails prioritize contribution summaries, brief author/institution overviews and paper/project links. Ranking uses the paper's sourced institution list without individual author mappings. Full institution lists and source evidence remain in JSON reports.
 
@@ -25,7 +25,7 @@ Edit the existing fields in [`config.toml`](config.toml):
 | `arxiv.categories` | arXiv categories, e.g. `["cs.RO"]` or `["cs.AI", "cs.LG"]` |
 | `[[interests]]` | Replace the example interests with your research topics |
 | `[[exclusions]]` | Topics to exclude; review these when changing research areas |
-| `selection.top_k` | Maximum papers per batch; default: 10 |
+| `selection.top_k` | Total limit across all three sections; default: 15, with no minimum quota |
 | `selection.min_score` | Relevance threshold; default: 0.60 |
 | `ranking` | Institution filtering and ranking after relevance screening; default weight: 35%; see [ranking configuration](docs/ranking.md) |
 | `deepseek.language` | Summary language; change `"简体中文"` to `"English"` for English summaries |
@@ -76,13 +76,19 @@ Open **Actions → Daily arXiv Digest → Run workflow**:
 
 ## Step 5: Check the daily schedule
 
-The primary run is scheduled for **09:30 Beijing time (01:30 UTC)**, with hourly fallback checks at **09:47–17:47 Beijing time**. Automatic runs check each recipient's acknowledged daily delivery, including empty digests. Already-delivered recipients are skipped before fetching papers or calling models. Manual `send` deliveries count; `delivery_test` messages do not. Manual `send` itself remains an explicit additional run.
+The primary run is scheduled for **09:30 Beijing time (01:30 UTC)**, with hourly fallback checks at **09:47–23:47 Beijing time**. Automatic runs check each recipient's acknowledged daily delivery, including empty digests. Already-delivered recipients are skipped before fetching papers or calling models. Manual `send` deliveries count; `delivery_test` messages do not. Manual `send` itself remains an explicit additional run.
 
 To change the target time, update the primary cron, fallback window and `--daily-after 09:30` in [`daily.yml`](.github/workflows/daily.yml). Cron uses UTC; the daily guard uses `timezone` from `config.toml`.
 
-**An empty digest is sent even when there are no new matching papers** (`email.send_empty = true`), explaining that no matches are available. Sending an empty digest adds no model calls; any new candidates still require decision model screening. Previously delivered papers are not resent, and weekends may reuse the latest announcement batch. Set this option to `false` to skip empty digests. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+For a fallback independent of GitHub cron, use your own scheduler to invoke `daily` mode as described in the [operations guide](docs/operations.md#独立外部调度). Repository files alone do not create an external scheduler.
+
+Institutions contribute **35%** of the ranking. S/A/B tiers score **100/80/60**, with a minimum of **80** for verified institutions, excluding B-tier papers. Unknown institutions use separate `unknown_policy` / `unlisted_policy` settings. See the [list and configuration](docs/ranking.md). Motion imitation also includes `mimic`, requiring a humanoid or bipedal control contribution.
+
+**An empty digest is sent even when there are no new matching papers** (`email.send_empty = true`), explaining that no matches are available. Sending an empty digest adds no model calls; any new candidates still require decision model screening. New submissions and cross-lists are deduplicated by paper; replacements by version. A delivered v1 can be followed by v2, but the same v2 is not resent. Weekends may reuse the latest announcement batch. Set this option to `false` to skip empty digests. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 
 <br>
+
+Daily discovery uses `arxiv.source = "new"`. `/new` has no historical batches. After missed days, use explicit API-window recovery in the [operations guide](docs/operations.md); it cannot reconstruct all historical cross-list and replacement announcements. Replacement summaries describe the current abstract, not a version diff.
 
 ## Optional: Change the decision service
 

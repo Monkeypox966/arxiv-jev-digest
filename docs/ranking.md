@@ -10,9 +10,16 @@
 [ranking]
 enabled = true
 institution_weight = 0.35
-min_institution_score = 0.60
+min_institution_score = 0.80
 unknown_policy = "keep"
 unlisted_policy = "keep"
+neutral_score = 0.60
+assess_unlisted = true
+assessment_cache_days = 30
+assessment_retry_hours = 168
+assessment_min_confidence = 0.80
+assessment_limit_per_run = 12
+assessment_retry_limit_per_run = 20
 ```
 
 `enrichment.enabled = true` 是开启机构排序的前提。所有达到相关性门槛的论文都先核实机构，不在旧的 Top K 中二次重排。只有最终入选论文生成摘要；机构提取本身可能调用 DeepSeek，查阅量与费用因此增加。机构结果单独缓存，可复用。
@@ -20,20 +27,38 @@ unlisted_policy = "keep"
 - 综合分 = `(1 − institution_weight) × Jev 相关性分 + institution_weight × 机构分`。机构权重取值 0–0.5，确保相关性权重至少一半。
 - 先检查相关性 `selection.min_score` 与排除规则。高机构分不能让不相关论文通过。
 - 机构分取从论文 / 项目页提取、带来源的署名机构清单中的**最高分**，不要求逐个作者对应，不累计机构数量，不区分一作或通讯作者，不凭作者名猜测机构。
-- 已核实机构但未命中名单：标记 `unlisted`，没有机构加分。默认 `unlisted_policy = "keep"` 保留并标注，不把名单未收录视作低质量；设 `exclude` 可恢复严格名单过滤。
-- 未提取到带来源的署名机构：标记 `unknown`，默认保留但无机构加分。设 `unknown_policy = "exclude"` 可严格移除。不因缺少作者对应关系而拒绝机构或补查。这样可以区分“未进入偏好名单”和“没有取得可靠资料”。
-- `min_institution_score` 仅作用于匹配到明确分值的机构，取值 0–1；提高到 0.8 会移除 0.6 档，设为 0 不按分值过滤。未收录和未知机构分别由两项 policy 决定。
+- 已核实机构但未命中名单：开启辅助评估后，尝试核实机构身份及官网研究资料，再给有证据的辅助偏好分；没有足够资料时仍为 `unlisted`，默认用 60 分中性基线并保留。设 `unlisted_policy = "exclude"` 可选择严格排除未评估机构。
+- 未提取到带来源的署名机构：标记 `unknown`，默认保留并用 60 分中性基线。设 `unknown_policy = "exclude"` 可严格移除。不因缺少作者对应关系而拒绝机构或补查。
+- `min_institution_score` 作用于人工评分或已有证据的辅助评分，取值 0–1；默认 0.8 会移除人工 B / 0.6 档，改为 0.6 可保留 B 档，设为 0 不按分值过滤。中性保底并非已判定机构较弱，未评估和未知机构分别由两项 policy 决定。
 - 同分按相关性、arXiv ID 稳定排序。相关性分、综合排序分、机构分及匹配依据保留在 JSON 报告中，邮件不展示这些诊断明细。
 
 默认名单位于 [`institutions.json`](../src/arxiv_digest/data/institutions.json)：
 
 | 分值 | 默认偏好示例 |
 | --- | --- |
-| 1.0 | Stanford、CMU、MIT、UC Berkeley、清华、北大、上海交大、浙大、ETH Zurich；NVIDIA、Physical Intelligence、Figure、银河通用、Google DeepMind、Boston Dynamics、Unitree |
-| 0.8 | Princeton、Harvard、Caltech、Cornell、UPenn、UW、Georgia Tech、UIUC、Michigan、UCSD、UCLA、中科大、复旦、南大、哈工大、同济、中科院、港大、港科大、港中文、NUS、NTU、EPFL、牛津、剑桥、帝国理工、TUM、Delft、Korea University、KAIST、MBZUAI 等；Apple、Microsoft Research、Meta AI、Disney Research、TeleAI、Agility、Apptronik、1X、傅利叶、优必选、智元等 |
-| 0.6 | ShanghaiTech、University of Nevada Reno、ROBOTIS |
+| S / 1.0 | Stanford、CMU、MIT、UC Berkeley、清华、北大、上海交大、浙大、ETH、TUM、KAIST、NUS、NTU、HKUST、CUHK；NVIDIA、Physical Intelligence、Figure、银河通用、智元、RobotEra、Galaxea、Agility、Apptronik、1X 等 |
+| A / 0.8 | 北航、同济、南科大、西湖大学、复旦、中科大、哈工大、UT Austin、UPenn、UCSD、EPFL、牛津、剑桥等；傅利叶、Generalist AI、Covariant 等 |
+| B / 0.6 | Harvard、UCLA、武汉大学、北京邮电大学、Purdue、Aalto、ShanghaiTech、University of Nevada Reno、ROBOTIS 等 |
 
 名单不穷尽所有优秀机构；尤其“未列入”仅表示当前规则未收录。建议根据实际研究偏好增补，不必照搬分档。
+
+当前名单根据用户提供的 S / A / B 分级整理为 232 家（38 / 132 / 62 家），完整条目及别名见[机构名单](institution-list.md)。重复机构取最高档；未在新资料中分级的原有条目保留旧分数。
+
+## 名单外机构的辅助评估
+
+先使用 [ROR 公开机构登记](https://ror.readme.io/docs/api-query)的 affiliation 匹配核实实体；仅接受唯一 chosen 且匹配分至少 0.9 的结果。登记归一化名称若命中人工名单，直接使用人工分数。
+
+否则读取登记中关联的机构官网，以及最多一个同域研究页面，复用已有的公开地址、重定向、体积和超时限制。提供原文给 DeepSeek，要求按当前研究主题、具体研究成果辅助评为 60 / 80 / 100 分；不凭机构名字、投资金额或宣传口号评分。
+
+80 分需要可核对的官网原文引用，100 分需要两份不同内容的官网页面；引用 URL 必须是实际提供的页面，引用文本必须真实存在。模型自报置信度需至少 0.8，否则改用中性分。评分属于阅读偏好启发式，不能解释成客观机构排名或经过校准的质量概率。
+
+研究机构或新企业未被 ROR 收录、身份有歧义、官网不可读、资料不足或达到本轮查找上限时，都使用中性分，不因此给零分。当前实现不做无界网页搜索；这也是部分新公司的评估可能暂时停留在中性分的原因。
+
+同一机构评估默认缓存 30 天，中性结果默认 7 天后重查；别名可复用同一 ROR 实体的评估。每轮最多查 12 个未缓存机构，超出额度的暂用中性分且不长期缓存。DeepSeek 的机构评估及其重试与摘要共用总调用预算，在 usage.json 中以 `institution_assessment` 单独记录。API 权限、余额和预算错误仍会使整轮失败。
+
+未发送、未入选且仍有可能因补评提高机构分的候选进入独立持久化补评队列：达到额度的 24 小时后重查，资料不足的按 7 天缓存期限重查，每轮最多恢复 20 篇。已处理记录及离开最新公告批次不会阻止补评；到期候选优先取得查找额度。已发送或不再需要补评的论文清理队列，不因此重发；更改分类后不会补查旧分类。
+
+人工名单始终优先；加入或修改人工分数会覆盖模型意见。多个机构仍取最高分，不累计。详细评分、引用及时间只放在 JSON 报告，邮件继续只展示简短机构概览。[当前完整人工名单](institution-list.md)
 
 ## 修改名单
 
@@ -58,6 +83,10 @@ aliases = ["Example Robotics Institute"]
 ```
 
 默认 `match_mode = "phrase"`：统一 Unicode、大小写与空白，并对英文短语或缩写检查字符边界，避免 MIT 匹配 MITRE。`exact` 要求整条机构名称匹配，用于容易与普通实验室名称混淆的公司，如 Physical Intelligence（不会把同济的 Physical Intelligence Lab 当成该公司）。不要加入无辨识度的缩写，例如 PI、交大、华盛顿。
+
+`exact` 允许常见公司法律后缀及受限地点后缀，例如 `Figure AI, Inc.`、`Physical Intelligence, San Francisco, USA`；不会忽略任意尾部文字，`Physical Intelligence Lab` 仍不匹配公司。括号内缩写先与前面的完整机构名消歧：台湾大学的 NTU 不会当作南洋理工，分校后附母校缩写也不能提升分数。
+
+同一机构名称中，明确校区 / 下属研究所的更具体匹配优先，覆盖其内部包含的母校 / 总院名字。例如 HKUST 广州为 A、HKUST 本部为 S；中科院计算所为 B，不能被总院的 A 覆盖。独立列出的合作机构仍分别计分、取最高值。通用单词公司名如 Humanoid、Intrinsic、Flexion、ugo 使用整名匹配，避免把研究主题误当公司。
 
 示例配置采用相关性 65% + 机构偏好 35%。邮件聚焦摘要、作者简表、机构概览和论文 / 项目链接，不展示评分依据或逐作者机构对应。`digest.json` 的每篇记录保留完整 `ranking`、机构清单和来源；同目录 `ranking-audit.json` 记录所有通过相关性门槛的候选、机构匹配、是否通过机构过滤、是否入选，便于检查被移除的论文。切换权重、名单或机构判别策略会重新考虑窗口内未发送论文，复用原 Jev 判断；摘要提示词版本变化时生成新版摘要，已发送论文不会自动重发。
 

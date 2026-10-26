@@ -16,9 +16,13 @@
           {% if stats.get('announcement_dates') %}<div style="font-size:12px;color:#d1e6dc;margin-top:4px;">公告批次：{{ stats['announcement_dates']|join(' / ') }}</div>{% endif %}
         </td></tr>
         {% if demo %}<tr><td style="padding:12px 20px;background:#fff3d8;color:#80500c;font-size:13px;">离线演示：论文与摘要均为虚构示例，未调用模型，未发送邮件。</td></tr>{% endif %}
-        {% for pick in picks %}
+        {% set counter = namespace(value=0) %}
+        {% for section in sections %}
+        <tr><td style="padding:12px 20px;background:#e7eee9;color:#173e34;font-size:16px;font-weight:600;">{{ section.label }} · {{ section.picks|length }} 篇</td></tr>
+        {% for pick in section.picks %}
+        {% set counter.value = counter.value + 1 %}
         <tr><td style="background:#fff;padding:22px 20px;border-bottom:1px solid #e4ebe7;overflow-wrap:break-word;">
-          <div style="font-size:12px;color:#688577;">{{ '%02d'|format(loop.index) }} &nbsp; / &nbsp; {{ pick.paper.categories|join(' · ') }}</div>
+          <div style="font-size:12px;color:#688577;">{{ '%02d'|format(counter.value) }} &nbsp; / &nbsp; {{ pick.paper.categories|join(' · ') }}{% if pick.paper.version %} &nbsp; · &nbsp; {{ pick.paper.version }}{% endif %}</div>
           <h2 style="font-size:21px;line-height:1.5;margin:8px 0 6px;color:#173e34;">{{ pick.summary.title_zh }}</h2>
           <div style="font-size:13px;line-height:1.6;color:#63756a;">{{ pick.paper.title }}</div>
           <p style="font-size:15px;line-height:1.85;margin:14px 0 16px;color:#243832;">{{ pick.summary.tldr }}</p>
@@ -32,6 +36,7 @@
             作者：{{ authors[pick.paper.id] }}<br>
             机构：{{ institutions[pick.paper.id] }}<br>
             首次提交：{{ pick.paper.published[:10] }}
+            {% if pick.paper.announcement_type == 'replace' and pick.paper.updated %}<br>最近更新：{{ pick.paper.updated[:10] }}{% endif %}
           </div>
           {% if not demo %}
           <a href="{{ pick.paper.metadata_url }}" style="display:inline-block;background:#236347;color:#fff;text-decoration:none;padding:7px 13px;border-radius:5px;font-size:13px;">阅读论文 ↗</a>
@@ -42,8 +47,10 @@
           {% endif %}
         </td></tr>
         {% else %}
-        <tr><td style="padding:30px 20px;background:#fff;">本次没有达到筛选阈值的新论文。</td></tr>
+        <tr><td style="padding:16px 20px;background:#fff;color:#63756a;font-size:13px;">本部分暂无符合筛选条件的论文。</td></tr>
         {% endfor %}
+        {% endfor %}
+        {% if not picks %}<tr><td style="padding:20px;background:#fff;">本次没有达到筛选阈值的新论文。</td></tr>{% endif %}
         <tr><td style="padding:16px 20px;background:#e7eee9;border-radius:0 0 12px 12px;font-size:12px;color:#63776b;">
           AI 摘要仅依据论文标题与原始摘要生成，请以论文原文为准。<br>
           生成于 {{ date }} {{ generated }} · {{ timezone }}

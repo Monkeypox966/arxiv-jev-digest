@@ -14,6 +14,8 @@ ENV = Environment(
     autoescape=select_autoescape(["html", "xml"]),
 )
 
+ANNOUNCEMENT_LABELS = {"new": "新提交", "cross": "跨分类", "replace": "修订论文"}
+
 
 def author_line(pick: Pick) -> str:
     authors = pick.paper.authors
@@ -43,6 +45,14 @@ def render(config: Config, picks: list[Pick], now: datetime, stats: dict, *, dem
     subject = f"{config.email.subject_prefix} · {date} · {len(picks)} 篇"
     authors = {pick.paper.id: author_line(pick) for pick in picks}
     institutions = {pick.paper.id: institution_line(pick) for pick in picks}
+    sections = [
+        {
+            "kind": kind,
+            "label": label,
+            "picks": [pick for pick in picks if pick.paper.announcement_type == kind],
+        }
+        for kind, label in ANNOUNCEMENT_LABELS.items()
+    ]
     html = ENV.get_template("digest.html").render(
         picks=picks,
         date=date,
@@ -53,13 +63,25 @@ def render(config: Config, picks: list[Pick], now: datetime, stats: dict, *, dem
         generated=now.strftime("%H:%M"),
         authors=authors,
         institutions=institutions,
+        sections=sections,
     )
     lines = [subject, ""]
     if stats.get("announcement_dates"):
         lines += ["公告批次：" + ", ".join(stats["announcement_dates"]), ""]
     if demo:
         lines.extend(["离线演示：论文、分数和摘要均为虚构示例，未调用模型。", ""])
-    for index, pick in enumerate(picks, 1):
+    ordered = []
+    for section in sections:
+        ordered.append((None, f"{section['label']} · {len(section['picks'])} 篇"))
+        if not section["picks"]:
+            ordered.append((None, "本部分暂无符合筛选条件的论文。"))
+        ordered.extend((pick, "") for pick in section["picks"])
+    index = 0
+    for pick, label in ordered:
+        if pick is None:
+            lines += [label, ""]
+            continue
+        index += 1
         lines += [
             f"{index}. {pick.summary.title_zh}",
             pick.paper.title,
@@ -79,6 +101,10 @@ def render(config: Config, picks: list[Pick], now: datetime, stats: dict, *, dem
             "机构：" + institutions[pick.paper.id],
             "首次提交：" + pick.paper.published[:10],
         ]
+        if pick.paper.version:
+            lines.append("版本：" + pick.paper.versioned_id.removeprefix(pick.paper.id))
+        if pick.paper.announcement_type == "replace" and pick.paper.updated:
+            lines.append("最近更新：" + pick.paper.updated[:10])
         if not demo:
             lines += ["论文：" + pick.paper.metadata_url, "PDF：" + pick.paper.metadata_pdf_url]
             lines.append(
@@ -108,6 +134,18 @@ def write_report(
         "summary_basis": "title_and_abstract_only",
         "stats": stats,
         "papers": [pick.to_dict() for pick in picks],
+        "sections": [
+            {
+                "kind": kind,
+                "label": label,
+                "paper_ids": [
+                    pick.paper.versioned_id
+                    for pick in picks
+                    if pick.paper.announcement_type == kind
+                ],
+            }
+            for kind, label in ANNOUNCEMENT_LABELS.items()
+        ],
         "metadata_completeness": {
             pick.paper.id: pick.details.completeness(pick.paper) for pick in picks if pick.details
         },

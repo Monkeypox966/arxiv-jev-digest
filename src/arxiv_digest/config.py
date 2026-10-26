@@ -25,7 +25,7 @@ class Interest(Settings):
 
 class ArxivSettings(Settings):
     categories: list[str] = Field(min_length=1)
-    source: Literal["api", "rss", "latest"] = "api"
+    source: Literal["new", "api", "rss", "latest"] = "new"
     lookback_days: int = Field(default=7, ge=1, le=31)
     page_size: int = Field(default=200, ge=1, le=2000)
     max_candidates: int = Field(default=10000, ge=1, le=30000)
@@ -33,6 +33,12 @@ class ArxivSettings(Settings):
     include_cross_lists: bool = True
     catch_up: bool = False
     catch_up_max_days: int = Field(default=14, ge=1, le=31)
+
+    @model_validator(mode="after")
+    def check_new_history(self):
+        if self.source == "new" and self.catch_up:
+            raise ValueError("/new has no history; disable catch_up and use explicit API recovery")
+        return self
 
     @field_validator("categories")
     @classmethod
@@ -100,7 +106,7 @@ class DeepSeekSettings(APISettings):
 
 
 class SelectionSettings(Settings):
-    top_k: int = Field(default=30, ge=1, le=100)
+    top_k: int = Field(default=15, ge=1, le=100)
     min_score: float = Field(default=0.6, ge=0, le=1)
     exclude_threshold: float = Field(default=0.85, ge=0, le=1)
     combine: Literal["max", "noisy_or"] = "max"
@@ -189,6 +195,13 @@ class RankingSettings(Settings):
     min_institution_score: float = Field(default=0.6, ge=0, le=1)
     unknown_policy: Literal["keep", "exclude"] = "keep"
     unlisted_policy: Literal["keep", "exclude"] = "keep"
+    neutral_score: float = Field(default=0.6, ge=0, le=1)
+    assess_unlisted: bool = False
+    assessment_cache_days: int = Field(default=30, ge=1, le=30)
+    assessment_retry_hours: int = Field(default=168, ge=1, le=720)
+    assessment_min_confidence: float = Field(default=0.8, ge=0.5, le=1)
+    assessment_limit_per_run: int = Field(default=12, ge=1, le=50)
+    assessment_retry_limit_per_run: int = Field(default=20, ge=1, le=100)
     institutions: list[InstitutionRule] = Field(default_factory=default_institutions)
 
 

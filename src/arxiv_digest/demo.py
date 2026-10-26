@@ -43,6 +43,9 @@ def demo(config: Config):
             authors=["Demo Research Group"],
             categories=["cs.AI"],
             published="2026-10-24",
+            announcement_type=["new", "cross", "replace"][index],
+            version="v2" if index == 2 else "v1",
+            updated="2026-10-26" if index == 2 else "2026-10-24",
         )
         decision = Decision(
             score=score,

@@ -19,7 +19,7 @@ from .clients import DeepSeekClient
 from .config import Config, recipients, require_env
 from .enrichment import Enricher
 from .http import ServiceError
-from .mailer import SMTPMailer, build_message
+from .mailer import SMTPMailer, build_message, send_prepared
 from .store import Store, recipient_key
 from .usage import UsageTracker
 
@@ -135,12 +135,11 @@ def test_delivery(config: Config, *, outbox_hook=None, mailer_factory=SMTPMailer
         with Store(config.state_dir) as store:
             for address in addresses:
                 key = recipient_key(address)
+                store.discard_prepared(key)
                 if store.pending(key):
                     raise ServiceError("Resolve pending deliveries before running an SMTP test")
                 with mailer_factory(config) as mailer:
-                    delivery = store.prepare(key, "delivery-test-v1", [], [])
-                    if outbox_hook:
-                        outbox_hook()
+                    delivery = store.prepare(key, "delivery-test-v1", [], [], staged=True)
                     subject = config.email.subject_prefix + " · 投递联调测试"
                     text = (
                         "这是一封投递联调测试邮件，用于验证 QQ SMTP、发送前状态保存和确认流程。\n"
@@ -149,8 +148,8 @@ def test_delivery(config: Config, *, outbox_hook=None, mailer_factory=SMTPMailer
                     )
                     import html
 
-                    mailer.send(
-                        build_message(
+                    try:
+                        message = build_message(
                             config,
                             address,
                             delivery,
@@ -159,8 +158,10 @@ def test_delivery(config: Config, *, outbox_hook=None, mailer_factory=SMTPMailer
                             "<pre>" + html.escape(text) + "</pre>",
                             now,
                         )
-                    )
-                    store.resolve(delivery, "sent")
+                    except BaseException:
+                        store.cancel_before_send(delivery)
+                        raise
+                    send_prepared(store, delivery, mailer, message, outbox_hook=outbox_hook)
                     sent += 1
         result = {"emails_sent": sent, "test_delivery": True, "output_dir": str(directory)}
         health.update(status="success", stats=result)
@@ -196,7 +197,10 @@ def actions_summary(config: Config) -> dict:
         ("入选论文", stats.get("selected_unique", 0)),
         ("已发送日报", stats.get("emails_sent", 0)),
         ("尚未提取署名机构", stats.get("metadata_missing", 0)),
+        ("机构清单尚未完成 PDF 核查", stats.get("metadata_partial", 0)),
         ("待核查论文重试", stats.get("metadata_retries", 0)),
+        ("机构补评候选重试", stats.get("institution_assessment_retries", 0)),
+        ("本轮暂缓评估机构", stats.get("institution_deferred", 0)),
         ("JEV API 尝试", usage.get("jev_calls", 0)),
         ("DeepSeek API 尝试", usage.get("deepseek_calls", 0)),
         ("服务报告输入 token", usage.get("input_tokens", 0)),

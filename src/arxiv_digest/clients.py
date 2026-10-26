@@ -61,7 +61,7 @@ def profile_key(config: Config) -> str:
     data = decision_profile(config)
     if config.ranking.enabled:
         data["ranking"] = config.ranking.model_dump()
-        data["affiliation_policy"] = "paper-institutions-v1"
+        data["affiliation_policy"] = "paper-institutions-v3-complete-sources-deferred"
     return fingerprint(data)
 
 

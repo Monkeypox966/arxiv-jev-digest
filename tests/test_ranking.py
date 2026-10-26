@@ -70,7 +70,7 @@ def test_missing_evidence_is_unknown_and_not_guessed(paper, missing):
     settings = RankingSettings(enabled=True)
     result = rank_paper(paper, 0.95, value, settings)
     assert result.status == "unknown"
-    assert result.institution_score == 0
+    assert result.institution_score == settings.neutral_score
     assert passes_institution_filter(result, settings)
     settings.unknown_policy = "exclude"
     assert not passes_institution_filter(result, settings)

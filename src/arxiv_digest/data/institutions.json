@@ -1,68 +1,2107 @@
 [
-  {"name":"Stanford University","score":1.0,"aliases":["Stanford University","Stanford","斯坦福大学"]},
-  {"name":"Carnegie Mellon University","score":1.0,"aliases":["Carnegie Mellon University","Carnegie Mellon","CMU","卡内基梅隆大学"]},
-  {"name":"Massachusetts Institute of Technology","score":1.0,"aliases":["Massachusetts Institute of Technology","MIT","麻省理工学院"]},
-  {"name":"University of California, Berkeley","score":1.0,"aliases":["University of California, Berkeley","University of California Berkeley","UC Berkeley","U.C. Berkeley","UCB","加州大学伯克利分校"]},
-  {"name":"Tsinghua University","score":1.0,"aliases":["Tsinghua University","清华大学"]},
-  {"name":"Peking University","score":1.0,"aliases":["Peking University","北京大学"]},
-  {"name":"Shanghai Jiao Tong University","score":1.0,"aliases":["Shanghai Jiao Tong University","Shanghai Jiaotong University","SJTU","上海交通大学"]},
-  {"name":"Zhejiang University","score":1.0,"aliases":["Zhejiang University","浙江大学"]},
-  {"name":"ETH Zurich","score":1.0,"aliases":["ETH Zurich","ETH Zürich","Swiss Federal Institute of Technology Zurich","苏黎世联邦理工学院"]},
-  {"name":"NVIDIA","score":1.0,"aliases":["NVIDIA","英伟达"]},
-  {"name":"Physical Intelligence","score":1.0,"match_mode":"exact","aliases":["Physical Intelligence","Physical Intelligence Inc.","Physical Intelligence, Inc."]},
-  {"name":"Figure AI","score":1.0,"match_mode":"exact","aliases":["Figure AI","Figure Robotics","Figure, Inc.","Figure Inc.","Figure"]},
-  {"name":"Galbot / 银河通用","score":1.0,"aliases":["Galbot","Galaxy General Robotics","银河通用"]},
-  {"name":"Google DeepMind","score":1.0,"aliases":["Google DeepMind","Google Robotics","DeepMind"]},
-  {"name":"Boston Dynamics","score":1.0,"aliases":["Boston Dynamics","波士顿动力"]},
-  {"name":"Unitree Robotics","score":1.0,"aliases":["Unitree","宇树科技","宇树机器人"]},
-  {"name":"Princeton University","score":0.8,"aliases":["Princeton University","普林斯顿大学"]},
-  {"name":"Harvard University","score":0.8,"aliases":["Harvard University","哈佛大学"]},
-  {"name":"California Institute of Technology","score":0.8,"aliases":["California Institute of Technology","Caltech","加州理工学院"]},
-  {"name":"Cornell University","score":0.8,"aliases":["Cornell University","康奈尔大学"]},
-  {"name":"University of Pennsylvania","score":0.8,"aliases":["University of Pennsylvania","UPenn","宾夕法尼亚大学"]},
-  {"name":"University of Washington","score":0.8,"aliases":["University of Washington","华盛顿大学"]},
-  {"name":"Georgia Institute of Technology","score":0.8,"aliases":["Georgia Institute of Technology","Georgia Tech","佐治亚理工学院"]},
-  {"name":"University of Illinois Urbana-Champaign","score":0.8,"aliases":["University of Illinois Urbana-Champaign","University of Illinois at Urbana-Champaign","UIUC","伊利诺伊大学厄巴纳香槟分校"]},
-  {"name":"University of Michigan","score":0.8,"aliases":["University of Michigan","密歇根大学"]},
-  {"name":"University of California, San Diego","score":0.8,"aliases":["University of California, San Diego","University of California San Diego","UC San Diego","UCSD","加州大学圣迭戈分校"]},
-  {"name":"University of California, Los Angeles","score":0.8,"aliases":["University of California, Los Angeles","University of California Los Angeles","UCLA","加州大学洛杉矶分校"]},
-  {"name":"Columbia University","score":0.8,"aliases":["Columbia University","哥伦比亚大学"]},
-  {"name":"New York University","score":0.8,"aliases":["New York University","NYU","纽约大学"]},
-  {"name":"University of Texas at Austin","score":0.8,"aliases":["University of Texas at Austin","UT Austin","德克萨斯大学奥斯汀分校"]},
-  {"name":"University of Science and Technology of China","score":0.8,"aliases":["University of Science and Technology of China","USTC","中国科学技术大学"]},
-  {"name":"Fudan University","score":0.8,"aliases":["Fudan University","复旦大学"]},
-  {"name":"Nanjing University","score":0.8,"aliases":["Nanjing University","南京大学"]},
-  {"name":"Harbin Institute of Technology","score":0.8,"aliases":["Harbin Institute of Technology","哈尔滨工业大学"]},
-  {"name":"Tongji University","score":0.8,"aliases":["Tongji University","同济大学"]},
-  {"name":"Xi'an Jiaotong University","score":0.8,"aliases":["Xi'an Jiaotong University","Xi’an Jiaotong University","西安交通大学"]},
-  {"name":"Chinese Academy of Sciences","score":0.8,"aliases":["Chinese Academy of Sciences","中国科学院"]},
-  {"name":"University of Hong Kong","score":0.8,"aliases":["University of Hong Kong","香港大学"]},
-  {"name":"Hong Kong University of Science and Technology","score":0.8,"aliases":["Hong Kong University of Science and Technology","HKUST","香港科技大学"]},
-  {"name":"Chinese University of Hong Kong","score":0.8,"aliases":["Chinese University of Hong Kong","CUHK","香港中文大学"]},
-  {"name":"National University of Singapore","score":0.8,"aliases":["National University of Singapore","新加坡国立大学"]},
-  {"name":"Nanyang Technological University","score":0.8,"aliases":["Nanyang Technological University","南洋理工大学"]},
-  {"name":"EPFL","score":0.8,"aliases":["EPFL","École polytechnique fédérale de Lausanne","洛桑联邦理工学院"]},
-  {"name":"University of Oxford","score":0.8,"aliases":["University of Oxford","牛津大学"]},
-  {"name":"University of Cambridge","score":0.8,"aliases":["University of Cambridge","剑桥大学"]},
-  {"name":"Imperial College London","score":0.8,"aliases":["Imperial College London","帝国理工学院"]},
-  {"name":"Technical University of Munich","score":0.8,"aliases":["Technical University of Munich","Technische Universität München","慕尼黑工业大学"]},
-  {"name":"Delft University of Technology","score":0.8,"aliases":["Delft University of Technology","TU Delft","代尔夫特理工大学"]},
-  {"name":"Korea University","score":0.8,"aliases":["Korea University","高丽大学"]},
-  {"name":"KAIST","score":0.8,"aliases":["KAIST","Korea Advanced Institute of Science and Technology","韩国科学技术院"]},
-  {"name":"Mohamed bin Zayed University of Artificial Intelligence","score":0.8,"aliases":["Mohamed bin Zayed University of Artificial Intelligence","MBZUAI","穆罕默德本扎耶德人工智能大学"]},
-  {"name":"Apple","score":0.8,"aliases":["Apple","苹果公司"]},
-  {"name":"Microsoft Research","score":0.8,"aliases":["Microsoft Research","微软研究院"]},
-  {"name":"Meta AI","score":0.8,"aliases":["Meta AI","Meta Reality Labs","FAIR, Meta","Meta Platforms"]},
-  {"name":"Disney Research","score":0.8,"aliases":["Disney Research","迪士尼研究院"]},
-  {"name":"China Telecom TeleAI","score":0.8,"aliases":["TeleAI","China Telecom","中国电信人工智能研究院"]},
-  {"name":"Agility Robotics","score":0.8,"aliases":["Agility Robotics"]},
-  {"name":"Apptronik","score":0.8,"aliases":["Apptronik"]},
-  {"name":"1X Technologies","score":0.8,"aliases":["1X Technologies"]},
-  {"name":"Fourier Intelligence","score":0.8,"aliases":["Fourier Intelligence","Fourier Robotics","傅利叶智能"]},
-  {"name":"UBTECH Robotics","score":0.8,"aliases":["UBTECH","优必选"]},
-  {"name":"Agibot / 智元机器人","score":0.8,"aliases":["Agibot","AgiBot","智元机器人"]},
-  {"name":"Beijing Innovation Center of Humanoid Robotics","score":0.8,"aliases":["Beijing Innovation Center of Humanoid Robotics","北京人形机器人创新中心"]},
-  {"name":"ShanghaiTech University","score":0.6,"aliases":["ShanghaiTech University","上海科技大学"]},
-  {"name":"University of Nevada, Reno","score":0.6,"aliases":["University of Nevada, Reno","University of Nevada Reno","内华达大学里诺分校"]},
-  {"name":"ROBOTIS","score":0.6,"aliases":["ROBOTIS"]}
+  {
+    "name": "1X Technologies",
+    "score": 1,
+    "aliases": [
+      "1X Technologies"
+    ]
+  },
+  {
+    "name": "Agibot / 智元机器人",
+    "score": 1,
+    "aliases": [
+      "Agibot",
+      "智元机器人",
+      "Agibot / 智元机器人",
+      "智元机器人（AgiBot）"
+    ]
+  },
+  {
+    "name": "Agility Robotics",
+    "score": 1,
+    "aliases": [
+      "Agility Robotics"
+    ]
+  },
+  {
+    "name": "Allen Institute for AI",
+    "score": 1,
+    "aliases": [
+      "Allen Institute for AI",
+      "Ai2",
+      "Allen Institute for AI（Ai2）",
+      "Allen Institute for Artificial Intelligence"
+    ]
+  },
+  {
+    "name": "Apptronik",
+    "score": 1,
+    "aliases": [
+      "Apptronik"
+    ]
+  },
+  {
+    "name": "Boston Dynamics",
+    "score": 1,
+    "aliases": [
+      "Boston Dynamics",
+      "波士顿动力"
+    ]
+  },
+  {
+    "name": "Carnegie Mellon University",
+    "score": 1,
+    "aliases": [
+      "Carnegie Mellon University",
+      "Carnegie Mellon",
+      "CMU",
+      "卡内基梅隆大学",
+      "Carnegie Mellon University（CMU）"
+    ]
+  },
+  {
+    "name": "Chinese University of Hong Kong",
+    "score": 1,
+    "aliases": [
+      "Chinese University of Hong Kong",
+      "CUHK",
+      "香港中文大学",
+      "香港中文大学（CUHK）"
+    ]
+  },
+  {
+    "name": "ETH Zurich",
+    "score": 1,
+    "aliases": [
+      "ETH Zurich",
+      "ETH Zürich",
+      "Swiss Federal Institute of Technology Zurich",
+      "苏黎世联邦理工学院",
+      "苏黎世联邦理工",
+      "ETH Zurich（苏黎世联邦理工）"
+    ]
+  },
+  {
+    "name": "Figure AI",
+    "score": 1,
+    "match_mode": "exact",
+    "aliases": [
+      "Figure AI",
+      "Figure Robotics",
+      "Figure, Inc.",
+      "Figure Inc.",
+      "Figure"
+    ]
+  },
+  {
+    "name": "Galbot / 银河通用",
+    "score": 1,
+    "aliases": [
+      "Galbot",
+      "Galaxy General Robotics",
+      "银河通用",
+      "Galbot / 银河通用",
+      "银河通用（Galbot）"
+    ]
+  },
+  {
+    "name": "Google DeepMind",
+    "score": 1,
+    "aliases": [
+      "Google DeepMind",
+      "Google Robotics",
+      "DeepMind"
+    ]
+  },
+  {
+    "name": "Hong Kong University of Science and Technology",
+    "score": 1,
+    "aliases": [
+      "Hong Kong University of Science and Technology",
+      "HKUST",
+      "香港科技大学",
+      "香港科技大学（HKUST）"
+    ]
+  },
+  {
+    "name": "Institute of Automation, Chinese Academy of Sciences",
+    "score": 1,
+    "aliases": [
+      "Institute of Automation, Chinese Academy of Sciences",
+      "中国科学院自动化研究所",
+      "Institute of Automation Chinese Academy of Sciences",
+      "Chinese Academy of Sciences, Institute of Automation",
+      "Chinese Academy of Sciences Institute of Automation",
+      "CAS Institute of Automation",
+      "CASIA",
+      "中科院自动化所",
+      "Institute of Automation, CAS",
+      "Institute of Automation (CAS)",
+      "Institute of Automation,Chinese Academy of Sciences",
+      "Chinese Academy of Sciences,Institute of Automation",
+      "Institute of Automation,CAS",
+      "Institute of Automation(CAS)"
+    ]
+  },
+  {
+    "name": "KAIST",
+    "score": 1,
+    "aliases": [
+      "KAIST",
+      "Korea Advanced Institute of Science and Technology",
+      "韩国科学技术院",
+      "KAIST（韩国科学技术院）"
+    ]
+  },
+  {
+    "name": "Massachusetts Institute of Technology",
+    "score": 1,
+    "aliases": [
+      "Massachusetts Institute of Technology",
+      "MIT",
+      "麻省理工学院",
+      "MIT（麻省理工学院）"
+    ]
+  },
+  {
+    "name": "Nanyang Technological University",
+    "score": 1,
+    "aliases": [
+      "Nanyang Technological University",
+      "南洋理工大学",
+      "NTU",
+      "Nanyang Technological University（NTU）"
+    ]
+  },
+  {
+    "name": "National University of Singapore",
+    "score": 1,
+    "aliases": [
+      "National University of Singapore",
+      "新加坡国立大学",
+      "NUS",
+      "National University of Singapore（NUS）"
+    ]
+  },
+  {
+    "name": "NVIDIA",
+    "score": 1,
+    "aliases": [
+      "NVIDIA",
+      "英伟达",
+      "NVIDIA GEAR / Research",
+      "NVIDIA GEAR",
+      "NVIDIA Research"
+    ]
+  },
+  {
+    "name": "Peking University",
+    "score": 1,
+    "aliases": [
+      "Peking University",
+      "北京大学"
+    ]
+  },
+  {
+    "name": "Physical Intelligence",
+    "score": 1,
+    "match_mode": "exact",
+    "aliases": [
+      "Physical Intelligence",
+      "Physical Intelligence Inc.",
+      "Physical Intelligence, Inc.",
+      "Physical Intelligence（π）",
+      "Physical Intelligence (PI)"
+    ]
+  },
+  {
+    "name": "Robotics and AI Institute",
+    "score": 1,
+    "aliases": [
+      "Robotics and AI Institute",
+      "Robotics & AI Institute",
+      "The Robotics and AI Institute",
+      "RAI Institute",
+      "Robotics & AI Institute（RAI）",
+      "Robotics and Artificial Intelligence Institute"
+    ]
+  },
+  {
+    "name": "Shanghai Artificial Intelligence Laboratory",
+    "score": 1,
+    "aliases": [
+      "Shanghai Artificial Intelligence Laboratory",
+      "上海人工智能实验室",
+      "Shanghai AI Laboratory"
+    ]
+  },
+  {
+    "name": "Shanghai Jiao Tong University",
+    "score": 1,
+    "aliases": [
+      "Shanghai Jiao Tong University",
+      "Shanghai Jiaotong University",
+      "SJTU",
+      "上海交通大学"
+    ]
+  },
+  {
+    "name": "Skild AI",
+    "score": 1,
+    "aliases": [
+      "Skild AI"
+    ]
+  },
+  {
+    "name": "Stanford University",
+    "score": 1,
+    "aliases": [
+      "Stanford University",
+      "Stanford",
+      "斯坦福大学",
+      "斯坦福",
+      "Stanford University（斯坦福）"
+    ]
+  },
+  {
+    "name": "Technical University of Munich",
+    "score": 1,
+    "aliases": [
+      "Technical University of Munich",
+      "Technische Universität München",
+      "慕尼黑工业大学",
+      "TUM",
+      "Technical University of Munich（TUM）"
+    ]
+  },
+  {
+    "name": "Tesla",
+    "score": 1,
+    "aliases": [
+      "Tesla",
+      "Tesla / Optimus",
+      "Tesla, Inc.",
+      "Tesla Inc.",
+      "Tesla Optimus"
+    ]
+  },
+  {
+    "name": "Tsinghua University",
+    "score": 1,
+    "aliases": [
+      "Tsinghua University",
+      "清华大学"
+    ]
+  },
+  {
+    "name": "UBTECH Robotics",
+    "score": 1,
+    "aliases": [
+      "UBTECH",
+      "优必选",
+      "UBTECH Robotics",
+      "优必选（UBTECH）"
+    ]
+  },
+  {
+    "name": "Unitree Robotics",
+    "score": 1,
+    "aliases": [
+      "Unitree",
+      "宇树科技",
+      "宇树机器人",
+      "Unitree Robotics",
+      "宇树科技（Unitree）"
+    ]
+  },
+  {
+    "name": "University of California, Berkeley",
+    "score": 1,
+    "aliases": [
+      "University of California, Berkeley",
+      "University of California Berkeley",
+      "UC Berkeley",
+      "U.C. Berkeley",
+      "UCB",
+      "加州大学伯克利分校",
+      "UC Berkeley（加州大学伯克利分校）"
+    ]
+  },
+  {
+    "name": "Zhejiang University",
+    "score": 1,
+    "aliases": [
+      "Zhejiang University",
+      "浙江大学"
+    ]
+  },
+  {
+    "name": "千寻智能",
+    "score": 1,
+    "aliases": [
+      "千寻智能",
+      "Spirit AI",
+      "千寻智能（Spirit AI）"
+    ]
+  },
+  {
+    "name": "星动纪元",
+    "score": 1,
+    "aliases": [
+      "星动纪元",
+      "RobotEra",
+      "星动纪元（RobotEra）"
+    ]
+  },
+  {
+    "name": "星海图",
+    "score": 1,
+    "aliases": [
+      "星海图",
+      "Galaxea",
+      "星海图（Galaxea）"
+    ]
+  },
+  {
+    "name": "自变量机器人",
+    "score": 1,
+    "aliases": [
+      "自变量机器人",
+      "X Square Robot",
+      "自变量机器人（X Square Robot）"
+    ]
+  },
+  {
+    "name": "逐际动力",
+    "score": 1,
+    "aliases": [
+      "逐际动力",
+      "LimX Dynamics",
+      "逐际动力（LimX Dynamics）"
+    ]
+  },
+  {
+    "name": "Agile Robots",
+    "score": 0.8,
+    "aliases": [
+      "Agile Robots"
+    ]
+  },
+  {
+    "name": "AI² Robotics",
+    "score": 0.8,
+    "aliases": [
+      "AI² Robotics",
+      "智平方",
+      "智平方（AI² Robotics）"
+    ]
+  },
+  {
+    "name": "ANYbotics",
+    "score": 0.8,
+    "aliases": [
+      "ANYbotics"
+    ]
+  },
+  {
+    "name": "Apple",
+    "score": 0.8,
+    "aliases": [
+      "Apple",
+      "苹果公司"
+    ]
+  },
+  {
+    "name": "Beihang University",
+    "score": 0.8,
+    "aliases": [
+      "Beihang University",
+      "北京航空航天大学",
+      "Beijing University of Aeronautics and Astronautics",
+      "BUAA",
+      "北航"
+    ]
+  },
+  {
+    "name": "Beijing Academy of Artificial Intelligence",
+    "score": 0.8,
+    "aliases": [
+      "Beijing Academy of Artificial Intelligence",
+      "北京智源人工智能研究院",
+      "BAAI",
+      "北京智源人工智能研究院（BAAI）"
+    ]
+  },
+  {
+    "name": "Beijing Innovation Center of Humanoid Robotics",
+    "score": 0.8,
+    "aliases": [
+      "Beijing Innovation Center of Humanoid Robotics",
+      "北京人形机器人创新中心"
+    ]
+  },
+  {
+    "name": "Beijing Institute of Technology",
+    "score": 0.8,
+    "aliases": [
+      "Beijing Institute of Technology",
+      "北京理工大学"
+    ]
+  },
+  {
+    "name": "California Institute of Technology",
+    "score": 0.8,
+    "aliases": [
+      "California Institute of Technology",
+      "Caltech",
+      "加州理工学院",
+      "加州理工",
+      "Caltech（加州理工）"
+    ]
+  },
+  {
+    "name": "China Telecom TeleAI",
+    "score": 0.8,
+    "aliases": [
+      "TeleAI",
+      "China Telecom",
+      "中国电信人工智能研究院"
+    ]
+  },
+  {
+    "name": "Chinese Academy of Sciences",
+    "score": 0.8,
+    "aliases": [
+      "Chinese Academy of Sciences",
+      "中国科学院"
+    ]
+  },
+  {
+    "name": "Chinese University of Hong Kong, Shenzhen",
+    "score": 0.8,
+    "aliases": [
+      "Chinese University of Hong Kong, Shenzhen",
+      "The Chinese University of Hong Kong, Shenzhen",
+      "Chinese University of Hong Kong (Shenzhen)",
+      "The Chinese University of Hong Kong (Shenzhen)",
+      "CUHK Shenzhen",
+      "CUHK-Shenzhen",
+      "CUHK (Shenzhen)",
+      "香港中文大学（深圳）",
+      "CUHK(SZ)",
+      "CUHK (SZ)",
+      "CUHK(Shenzhen)",
+      "CUHK, Shenzhen",
+      "香港中文大学深圳校区",
+      "香港中文大学 深圳校区",
+      "港中大（深圳）",
+      "Chinese University of Hong Kong,Shenzhen",
+      "The Chinese University of Hong Kong,Shenzhen",
+      "Chinese University of Hong Kong(Shenzhen)",
+      "The Chinese University of Hong Kong(Shenzhen)",
+      "CUHK,Shenzhen"
+    ]
+  },
+  {
+    "name": "CNRS / LAAS",
+    "score": 0.8,
+    "aliases": [
+      "CNRS / LAAS",
+      "CNRS",
+      "LAAS-CNRS",
+      "LAAS CNRS"
+    ]
+  },
+  {
+    "name": "Columbia University",
+    "score": 0.8,
+    "aliases": [
+      "Columbia University",
+      "哥伦比亚大学",
+      "Columbia University（哥伦比亚大学）"
+    ]
+  },
+  {
+    "name": "Cornell University",
+    "score": 0.8,
+    "aliases": [
+      "Cornell University",
+      "康奈尔大学",
+      "Cornell University（康奈尔大学）"
+    ]
+  },
+  {
+    "name": "Covariant",
+    "score": 0.8,
+    "aliases": [
+      "Covariant"
+    ]
+  },
+  {
+    "name": "Delft University of Technology",
+    "score": 0.8,
+    "aliases": [
+      "Delft University of Technology",
+      "TU Delft",
+      "代尔夫特理工大学",
+      "代尔夫特理工",
+      "TU Delft（代尔夫特理工）"
+    ]
+  },
+  {
+    "name": "Dexterity AI",
+    "score": 0.8,
+    "aliases": [
+      "Dexterity AI"
+    ]
+  },
+  {
+    "name": "Disney Research",
+    "score": 0.8,
+    "aliases": [
+      "Disney Research",
+      "迪士尼研究院"
+    ]
+  },
+  {
+    "name": "EPFL",
+    "score": 0.8,
+    "aliases": [
+      "EPFL",
+      "École polytechnique fédérale de Lausanne",
+      "洛桑联邦理工学院",
+      "洛桑联邦理工",
+      "EPFL（洛桑联邦理工）"
+    ]
+  },
+  {
+    "name": "Field AI",
+    "score": 0.8,
+    "aliases": [
+      "Field AI"
+    ]
+  },
+  {
+    "name": "Fourier Intelligence",
+    "score": 0.8,
+    "aliases": [
+      "Fourier Intelligence",
+      "Fourier Robotics",
+      "傅利叶智能",
+      "Fourier",
+      "傅利叶智能（Fourier）"
+    ]
+  },
+  {
+    "name": "Franka Robotics",
+    "score": 0.8,
+    "aliases": [
+      "Franka Robotics"
+    ]
+  },
+  {
+    "name": "Fraunhofer IPA",
+    "score": 0.8,
+    "aliases": [
+      "Fraunhofer IPA",
+      "Fraunhofer Institute for Manufacturing Engineering and Automation",
+      "Fraunhofer Institute for Manufacturing Engineering and Automation IPA",
+      "Fraunhofer-Institut für Produktionstechnik und Automatisierung"
+    ]
+  },
+  {
+    "name": "Fudan University",
+    "score": 0.8,
+    "aliases": [
+      "Fudan University",
+      "复旦大学"
+    ]
+  },
+  {
+    "name": "Generalist AI",
+    "score": 0.8,
+    "aliases": [
+      "Generalist AI"
+    ]
+  },
+  {
+    "name": "Georgia Institute of Technology",
+    "score": 0.8,
+    "aliases": [
+      "Georgia Institute of Technology",
+      "Georgia Tech",
+      "佐治亚理工学院",
+      "佐治亚理工",
+      "Georgia Tech（佐治亚理工）"
+    ]
+  },
+  {
+    "name": "German Aerospace Center",
+    "score": 0.8,
+    "aliases": [
+      "German Aerospace Center",
+      "DLR",
+      "German Aerospace Center（DLR）",
+      "Deutsches Zentrum für Luft- und Raumfahrt"
+    ]
+  },
+  {
+    "name": "Harbin Institute of Technology",
+    "score": 0.8,
+    "aliases": [
+      "Harbin Institute of Technology",
+      "哈尔滨工业大学"
+    ]
+  },
+  {
+    "name": "Hong Kong Polytechnic University",
+    "score": 0.8,
+    "aliases": [
+      "Hong Kong Polytechnic University",
+      "香港理工大学",
+      "The Hong Kong Polytechnic University",
+      "PolyU"
+    ]
+  },
+  {
+    "name": "Hong Kong University of Science and Technology (Guangzhou)",
+    "score": 0.8,
+    "aliases": [
+      "Hong Kong University of Science and Technology (Guangzhou)",
+      "The Hong Kong University of Science and Technology (Guangzhou)",
+      "Hong Kong University of Science and Technology, Guangzhou",
+      "HKUST Guangzhou",
+      "HKUST (Guangzhou)",
+      "HKUST-GZ",
+      "香港科技大学（广州）",
+      "HKUST(GZ)",
+      "HKUST (GZ)",
+      "HKUST(Guangzhou)",
+      "HKUST, Guangzhou",
+      "香港科技大学广州校区",
+      "香港科技大学 广州校区",
+      "香港科大（广州）",
+      "Hong Kong University of Science and Technology(Guangzhou)",
+      "The Hong Kong University of Science and Technology(Guangzhou)",
+      "Hong Kong University of Science and Technology,Guangzhou",
+      "HKUST,Guangzhou"
+    ]
+  },
+  {
+    "name": "Huazhong University of Science and Technology",
+    "score": 0.8,
+    "aliases": [
+      "Huazhong University of Science and Technology",
+      "华中科技大学",
+      "HUST"
+    ]
+  },
+  {
+    "name": "Hugging Face",
+    "score": 0.8,
+    "aliases": [
+      "Hugging Face",
+      "Hugging Face / LeRobot",
+      "HuggingFace"
+    ]
+  },
+  {
+    "name": "Humanoid",
+    "score": 0.8,
+    "aliases": [
+      "Humanoid"
+    ],
+    "match_mode": "exact"
+  },
+  {
+    "name": "IHMC",
+    "score": 0.8,
+    "aliases": [
+      "IHMC",
+      "Institute for Human and Machine Cognition",
+      "Florida Institute for Human and Machine Cognition"
+    ]
+  },
+  {
+    "name": "Imperial College London",
+    "score": 0.8,
+    "aliases": [
+      "Imperial College London",
+      "帝国理工学院",
+      "帝国理工",
+      "Imperial College London（帝国理工）"
+    ]
+  },
+  {
+    "name": "Indian Institute of Science",
+    "score": 0.8,
+    "aliases": [
+      "Indian Institute of Science",
+      "IISc",
+      "Indian Institute of Science（IISc）"
+    ]
+  },
+  {
+    "name": "Indian Institute of Technology Bombay",
+    "score": 0.8,
+    "aliases": [
+      "IIT Bombay",
+      "Indian Institute of Technology Bombay"
+    ]
+  },
+  {
+    "name": "Indian Institute of Technology Madras",
+    "score": 0.8,
+    "aliases": [
+      "IIT Madras",
+      "Indian Institute of Technology Madras"
+    ]
+  },
+  {
+    "name": "Inria",
+    "score": 0.8,
+    "aliases": [
+      "Inria"
+    ]
+  },
+  {
+    "name": "Intrinsic",
+    "score": 0.8,
+    "aliases": [
+      "Intrinsic"
+    ],
+    "match_mode": "exact"
+  },
+  {
+    "name": "Italian Institute of Technology",
+    "score": 0.8,
+    "aliases": [
+      "Italian Institute of Technology",
+      "Italian Institute of Technology（IIT）"
+    ]
+  },
+  {
+    "name": "Johns Hopkins University",
+    "score": 0.8,
+    "aliases": [
+      "Johns Hopkins University",
+      "JHU",
+      "Johns Hopkins University（JHU）"
+    ]
+  },
+  {
+    "name": "Karlsruhe Institute of Technology",
+    "score": 0.8,
+    "aliases": [
+      "Karlsruhe Institute of Technology",
+      "KIT",
+      "Karlsruhe Institute of Technology（KIT）"
+    ]
+  },
+  {
+    "name": "Korea University",
+    "score": 0.8,
+    "aliases": [
+      "Korea University",
+      "高丽大学"
+    ]
+  },
+  {
+    "name": "KTH Royal Institute of Technology",
+    "score": 0.8,
+    "aliases": [
+      "KTH Royal Institute of Technology",
+      "瑞典皇家理工",
+      "KTH Royal Institute of Technology（瑞典皇家理工）",
+      "KTH"
+    ]
+  },
+  {
+    "name": "Kyoto University",
+    "score": 0.8,
+    "aliases": [
+      "Kyoto University",
+      "京都大学",
+      "Kyoto University（京都大学）"
+    ]
+  },
+  {
+    "name": "Max Planck Institute for Intelligent Systems",
+    "score": 0.8,
+    "aliases": [
+      "Max Planck Institute for Intelligent Systems"
+    ]
+  },
+  {
+    "name": "McGill University",
+    "score": 0.8,
+    "aliases": [
+      "McGill University"
+    ]
+  },
+  {
+    "name": "Mentee Robotics",
+    "score": 0.8,
+    "aliases": [
+      "Mentee Robotics"
+    ]
+  },
+  {
+    "name": "Meta AI",
+    "score": 0.8,
+    "aliases": [
+      "Meta AI",
+      "Meta Reality Labs",
+      "FAIR, Meta",
+      "Meta Platforms",
+      "Facebook AI Research",
+      "Meta FAIR",
+      "Meta AI（FAIR）"
+    ]
+  },
+  {
+    "name": "Microsoft Research",
+    "score": 0.8,
+    "aliases": [
+      "Microsoft Research",
+      "微软研究院"
+    ]
+  },
+  {
+    "name": "Mohamed bin Zayed University of Artificial Intelligence",
+    "score": 0.8,
+    "aliases": [
+      "Mohamed bin Zayed University of Artificial Intelligence",
+      "MBZUAI",
+      "穆罕默德本扎耶德人工智能大学"
+    ]
+  },
+  {
+    "name": "Monash University",
+    "score": 0.8,
+    "aliases": [
+      "Monash University",
+      "莫纳什大学",
+      "Monash University（莫纳什大学）"
+    ]
+  },
+  {
+    "name": "Nanjing University",
+    "score": 0.8,
+    "aliases": [
+      "Nanjing University",
+      "南京大学"
+    ]
+  },
+  {
+    "name": "National Institute of Advanced Industrial Science and Technology",
+    "score": 0.8,
+    "aliases": [
+      "National Institute of Advanced Industrial Science and Technology",
+      "AIST",
+      "日本产业技术综合研究所",
+      "AIST（日本产业技术综合研究所）"
+    ]
+  },
+  {
+    "name": "National University of Defense Technology",
+    "score": 0.8,
+    "aliases": [
+      "National University of Defense Technology",
+      "国防科技大学",
+      "National University of Defence Technology",
+      "NUDT"
+    ]
+  },
+  {
+    "name": "NEURA Robotics",
+    "score": 0.8,
+    "aliases": [
+      "NEURA Robotics"
+    ]
+  },
+  {
+    "name": "New York University",
+    "score": 0.8,
+    "aliases": [
+      "New York University",
+      "NYU",
+      "纽约大学",
+      "New York University（NYU）"
+    ]
+  },
+  {
+    "name": "PAL Robotics",
+    "score": 0.8,
+    "aliases": [
+      "PAL Robotics"
+    ]
+  },
+  {
+    "name": "Peng Cheng Laboratory",
+    "score": 0.8,
+    "aliases": [
+      "Peng Cheng Laboratory",
+      "鹏城实验室",
+      "Pengcheng Laboratory"
+    ]
+  },
+  {
+    "name": "Politecnico di Milano",
+    "score": 0.8,
+    "aliases": [
+      "Politecnico di Milano",
+      "米兰理工",
+      "Politecnico di Milano（米兰理工）"
+    ]
+  },
+  {
+    "name": "Pollen Robotics",
+    "score": 0.8,
+    "aliases": [
+      "Pollen Robotics"
+    ]
+  },
+  {
+    "name": "POSTECH",
+    "score": 0.8,
+    "aliases": [
+      "POSTECH",
+      "浦项工科大学",
+      "POSTECH（浦项工科大学）"
+    ]
+  },
+  {
+    "name": "Princeton University",
+    "score": 0.8,
+    "aliases": [
+      "Princeton University",
+      "普林斯顿大学",
+      "Princeton University（普林斯顿大学）"
+    ]
+  },
+  {
+    "name": "Queensland University of Technology",
+    "score": 0.8,
+    "aliases": [
+      "Queensland University of Technology",
+      "QUT",
+      "Queensland University of Technology（QUT）"
+    ]
+  },
+  {
+    "name": "Rainbow Robotics",
+    "score": 0.8,
+    "aliases": [
+      "Rainbow Robotics"
+    ]
+  },
+  {
+    "name": "Renmin University of China",
+    "score": 0.8,
+    "aliases": [
+      "Renmin University of China",
+      "中国人民大学"
+    ]
+  },
+  {
+    "name": "RIKEN",
+    "score": 0.8,
+    "aliases": [
+      "RIKEN",
+      "日本理化学研究所",
+      "理化学研究所",
+      "RIKEN（日本理化学研究所）"
+    ]
+  },
+  {
+    "name": "RWTH Aachen University",
+    "score": 0.8,
+    "aliases": [
+      "RWTH Aachen University",
+      "亚琛工大",
+      "RWTH Aachen University（亚琛工大）"
+    ]
+  },
+  {
+    "name": "Sanctuary AI",
+    "score": 0.8,
+    "aliases": [
+      "Sanctuary AI"
+    ]
+  },
+  {
+    "name": "Sapienza University of Rome",
+    "score": 0.8,
+    "aliases": [
+      "Sapienza University of Rome",
+      "罗马第一大学",
+      "Sapienza University of Rome（罗马第一大学）"
+    ]
+  },
+  {
+    "name": "Seoul National University",
+    "score": 0.8,
+    "aliases": [
+      "Seoul National University",
+      "首尔大学",
+      "Seoul National University（首尔大学）"
+    ]
+  },
+  {
+    "name": "Sereact",
+    "score": 0.8,
+    "aliases": [
+      "Sereact"
+    ]
+  },
+  {
+    "name": "Shenyang Institute of Automation, Chinese Academy of Sciences",
+    "score": 0.8,
+    "aliases": [
+      "Shenyang Institute of Automation, Chinese Academy of Sciences",
+      "中国科学院沈阳自动化研究所",
+      "Shenyang Institute of Automation Chinese Academy of Sciences",
+      "Shenyang Institute of Automation",
+      "中科院沈阳自动化所"
+    ]
+  },
+  {
+    "name": "Shenzhen Institutes of Advanced Technology",
+    "score": 0.8,
+    "aliases": [
+      "Shenzhen Institutes of Advanced Technology",
+      "中国科学院深圳先进技术研究院",
+      "Shenzhen Institute of Advanced Technology",
+      "Shenzhen Institutes of Advanced Technology, Chinese Academy of Sciences",
+      "SIAT",
+      "中科院深圳先进院"
+    ]
+  },
+  {
+    "name": "Singapore University of Technology and Design",
+    "score": 0.8,
+    "aliases": [
+      "Singapore University of Technology and Design",
+      "SUTD",
+      "Singapore University of Technology and Design（SUTD）"
+    ]
+  },
+  {
+    "name": "Southeast University",
+    "score": 0.8,
+    "aliases": [
+      "Southeast University",
+      "东南大学"
+    ]
+  },
+  {
+    "name": "Southern University of Science and Technology",
+    "score": 0.8,
+    "aliases": [
+      "Southern University of Science and Technology",
+      "南方科技大学",
+      "SUSTech",
+      "南科大"
+    ]
+  },
+  {
+    "name": "Sun Yat-sen University",
+    "score": 0.8,
+    "aliases": [
+      "Sun Yat-sen University",
+      "中山大学",
+      "Sun Yat Sen University"
+    ]
+  },
+  {
+    "name": "Swiss-Mile",
+    "score": 0.8,
+    "aliases": [
+      "Swiss-Mile"
+    ]
+  },
+  {
+    "name": "Technion – Israel Institute of Technology",
+    "score": 0.8,
+    "aliases": [
+      "Technion – Israel Institute of Technology",
+      "Technion - Israel Institute of Technology",
+      "Technion Israel Institute of Technology"
+    ]
+  },
+  {
+    "name": "Tel Aviv University",
+    "score": 0.8,
+    "aliases": [
+      "Tel Aviv University"
+    ]
+  },
+  {
+    "name": "The University of Osaka",
+    "score": 0.8,
+    "aliases": [
+      "The University of Osaka",
+      "大阪大学",
+      "University of Osaka",
+      "Osaka University",
+      "The University of Osaka（大阪大学）"
+    ]
+  },
+  {
+    "name": "Tohoku University",
+    "score": 0.8,
+    "aliases": [
+      "Tohoku University",
+      "日本东北大学",
+      "東北大学"
+    ]
+  },
+  {
+    "name": "Tongji University",
+    "score": 0.8,
+    "aliases": [
+      "Tongji University",
+      "同济大学"
+    ]
+  },
+  {
+    "name": "Toyota Research Institute",
+    "score": 0.8,
+    "aliases": [
+      "Toyota Research Institute",
+      "TRI",
+      "Toyota Research Institute（TRI）"
+    ]
+  },
+  {
+    "name": "TU Darmstadt",
+    "score": 0.8,
+    "aliases": [
+      "TU Darmstadt",
+      "达姆施塔特工业大学",
+      "TU Darmstadt（达姆施塔特工业大学）"
+    ]
+  },
+  {
+    "name": "Université Paris-Saclay",
+    "score": 0.8,
+    "aliases": [
+      "Université Paris-Saclay",
+      "巴黎萨克雷大学",
+      "Université Paris-Saclay（巴黎萨克雷大学）"
+    ]
+  },
+  {
+    "name": "University College London",
+    "score": 0.8,
+    "aliases": [
+      "University College London",
+      "UCL",
+      "University College London（UCL）"
+    ]
+  },
+  {
+    "name": "University of Bonn",
+    "score": 0.8,
+    "aliases": [
+      "University of Bonn",
+      "波恩大学",
+      "University of Bonn（波恩大学）"
+    ]
+  },
+  {
+    "name": "University of Bristol",
+    "score": 0.8,
+    "aliases": [
+      "University of Bristol",
+      "布里斯托大学",
+      "University of Bristol（布里斯托大学）"
+    ]
+  },
+  {
+    "name": "University of British Columbia",
+    "score": 0.8,
+    "aliases": [
+      "University of British Columbia",
+      "UBC",
+      "University of British Columbia（UBC）"
+    ]
+  },
+  {
+    "name": "University of California, San Diego",
+    "score": 0.8,
+    "aliases": [
+      "University of California, San Diego",
+      "University of California San Diego",
+      "UC San Diego",
+      "UCSD",
+      "加州大学圣迭戈分校",
+      "UC San Diego（UCSD）"
+    ]
+  },
+  {
+    "name": "University of Cambridge",
+    "score": 0.8,
+    "aliases": [
+      "University of Cambridge",
+      "剑桥大学",
+      "University of Cambridge（剑桥大学）"
+    ]
+  },
+  {
+    "name": "University of Edinburgh",
+    "score": 0.8,
+    "aliases": [
+      "University of Edinburgh",
+      "爱丁堡大学",
+      "University of Edinburgh（爱丁堡大学）"
+    ]
+  },
+  {
+    "name": "University of Freiburg",
+    "score": 0.8,
+    "aliases": [
+      "University of Freiburg",
+      "弗赖堡大学",
+      "University of Freiburg（弗赖堡大学）"
+    ]
+  },
+  {
+    "name": "University of Hong Kong",
+    "score": 0.8,
+    "aliases": [
+      "University of Hong Kong",
+      "香港大学",
+      "HKU",
+      "香港大学（HKU）"
+    ]
+  },
+  {
+    "name": "University of Illinois Urbana-Champaign",
+    "score": 0.8,
+    "aliases": [
+      "University of Illinois Urbana-Champaign",
+      "University of Illinois at Urbana-Champaign",
+      "UIUC",
+      "伊利诺伊大学厄巴纳香槟分校",
+      "University of Illinois Urbana-Champaign（UIUC）"
+    ]
+  },
+  {
+    "name": "University of Maryland",
+    "score": 0.8,
+    "aliases": [
+      "University of Maryland",
+      "UMD",
+      "University of Maryland（UMD）"
+    ]
+  },
+  {
+    "name": "University of Massachusetts Amherst",
+    "score": 0.8,
+    "aliases": [
+      "University of Massachusetts Amherst",
+      "University of Massachusetts, Amherst",
+      "UMass Amherst"
+    ]
+  },
+  {
+    "name": "University of Michigan",
+    "score": 0.8,
+    "aliases": [
+      "University of Michigan",
+      "密歇根大学",
+      "University of Michigan（密歇根大学）"
+    ]
+  },
+  {
+    "name": "University of New South Wales",
+    "score": 0.8,
+    "aliases": [
+      "UNSW Sydney",
+      "新南威尔士大学",
+      "UNSW Sydney（新南威尔士大学）",
+      "University of New South Wales",
+      "UNSW"
+    ]
+  },
+  {
+    "name": "University of Oxford",
+    "score": 0.8,
+    "aliases": [
+      "University of Oxford",
+      "牛津大学",
+      "University of Oxford（牛津大学）"
+    ]
+  },
+  {
+    "name": "University of Pennsylvania",
+    "score": 0.8,
+    "aliases": [
+      "University of Pennsylvania",
+      "UPenn",
+      "宾夕法尼亚大学",
+      "University of Pennsylvania（宾夕法尼亚大学）"
+    ]
+  },
+  {
+    "name": "University of Science and Technology of China",
+    "score": 0.8,
+    "aliases": [
+      "University of Science and Technology of China",
+      "USTC",
+      "中国科学技术大学"
+    ]
+  },
+  {
+    "name": "University of Southern California",
+    "score": 0.8,
+    "aliases": [
+      "University of Southern California",
+      "USC",
+      "University of Southern California（USC）"
+    ]
+  },
+  {
+    "name": "University of Sydney",
+    "score": 0.8,
+    "aliases": [
+      "University of Sydney",
+      "悉尼大学",
+      "University of Sydney（悉尼大学）"
+    ]
+  },
+  {
+    "name": "University of Texas at Austin",
+    "score": 0.8,
+    "aliases": [
+      "University of Texas at Austin",
+      "UT Austin",
+      "德克萨斯大学奥斯汀分校",
+      "University of Texas at Austin（UT Austin）"
+    ]
+  },
+  {
+    "name": "University of Tokyo",
+    "score": 0.8,
+    "aliases": [
+      "University of Tokyo",
+      "东京大学",
+      "University of Tokyo（东京大学）"
+    ]
+  },
+  {
+    "name": "University of Toronto",
+    "score": 0.8,
+    "aliases": [
+      "University of Toronto",
+      "多伦多大学",
+      "University of Toronto（多伦多大学）"
+    ]
+  },
+  {
+    "name": "University of Washington",
+    "score": 0.8,
+    "aliases": [
+      "University of Washington",
+      "华盛顿大学",
+      "University of Washington（华盛顿大学）"
+    ]
+  },
+  {
+    "name": "University of Waterloo",
+    "score": 0.8,
+    "aliases": [
+      "University of Waterloo"
+    ]
+  },
+  {
+    "name": "Waseda University",
+    "score": 0.8,
+    "aliases": [
+      "Waseda University",
+      "早稻田大学",
+      "Waseda University（早稻田大学）"
+    ]
+  },
+  {
+    "name": "Westlake University",
+    "score": 0.8,
+    "aliases": [
+      "Westlake University",
+      "西湖大学"
+    ]
+  },
+  {
+    "name": "Xi'an Jiaotong University",
+    "score": 0.8,
+    "aliases": [
+      "Xi'an Jiaotong University",
+      "Xi’an Jiaotong University",
+      "西安交通大学"
+    ]
+  },
+  {
+    "name": "乐聚机器人",
+    "score": 0.8,
+    "aliases": [
+      "乐聚机器人",
+      "Leju",
+      "乐聚机器人（Leju）"
+    ]
+  },
+  {
+    "name": "云深处科技",
+    "score": 0.8,
+    "aliases": [
+      "云深处科技",
+      "DEEP Robotics",
+      "云深处科技（DEEP Robotics）"
+    ]
+  },
+  {
+    "name": "众擎机器人",
+    "score": 0.8,
+    "aliases": [
+      "众擎机器人",
+      "EngineAI",
+      "众擎机器人（EngineAI）"
+    ]
+  },
+  {
+    "name": "光轮智能",
+    "score": 0.8,
+    "aliases": [
+      "光轮智能",
+      "Lightwheel AI",
+      "光轮智能（Lightwheel AI）"
+    ]
+  },
+  {
+    "name": "加速进化",
+    "score": 0.8,
+    "aliases": [
+      "加速进化",
+      "Booster Robotics",
+      "加速进化（Booster Robotics）"
+    ]
+  },
+  {
+    "name": "北京星源智",
+    "score": 0.8,
+    "aliases": [
+      "北京星源智"
+    ]
+  },
+  {
+    "name": "原力灵机",
+    "score": 0.8,
+    "aliases": [
+      "原力灵机",
+      "Dexmal",
+      "原力灵机（Dexmal）"
+    ]
+  },
+  {
+    "name": "国家地方共建人形机器人创新中心（上海）",
+    "score": 0.8,
+    "aliases": [
+      "国家地方共建人形机器人创新中心（上海）",
+      "国家地方共建人形机器人创新中心"
+    ]
+  },
+  {
+    "name": "它石智航",
+    "score": 0.8,
+    "aliases": [
+      "它石智航",
+      "TARS",
+      "它石智航（TARS）"
+    ]
+  },
+  {
+    "name": "开普勒机器人",
+    "score": 0.8,
+    "aliases": [
+      "开普勒机器人",
+      "Kepler",
+      "开普勒机器人（Kepler）"
+    ]
+  },
+  {
+    "name": "星尘智能",
+    "score": 0.8,
+    "aliases": [
+      "星尘智能",
+      "Astribot",
+      "星尘智能（Astribot）"
+    ]
+  },
+  {
+    "name": "松延动力",
+    "score": 0.8,
+    "aliases": [
+      "松延动力",
+      "Noetix",
+      "松延动力（Noetix）"
+    ]
+  },
+  {
+    "name": "极佳视界",
+    "score": 0.8,
+    "aliases": [
+      "极佳视界",
+      "GigaAI",
+      "极佳视界（GigaAI）"
+    ]
+  },
+  {
+    "name": "浙江人形机器人创新中心",
+    "score": 0.8,
+    "aliases": [
+      "浙江人形机器人创新中心"
+    ]
+  },
+  {
+    "name": "灵初智能",
+    "score": 0.8,
+    "aliases": [
+      "灵初智能",
+      "PsiBot",
+      "灵初智能（PsiBot）"
+    ]
+  },
+  {
+    "name": "穹彻智能",
+    "score": 0.8,
+    "aliases": [
+      "穹彻智能",
+      "Noematrix",
+      "穹彻智能（Noematrix）"
+    ]
+  },
+  {
+    "name": "A*STAR",
+    "score": 0.6,
+    "aliases": [
+      "A*STAR",
+      "Agency for Science, Technology and Research",
+      "Agency for Science Technology and Research",
+      "新加坡科技研究局"
+    ]
+  },
+  {
+    "name": "Aalto University",
+    "score": 0.6,
+    "aliases": [
+      "Aalto University",
+      "阿尔托大学",
+      "Aalto University（阿尔托大学）"
+    ]
+  },
+  {
+    "name": "Beijing University of Posts and Telecommunications",
+    "score": 0.6,
+    "aliases": [
+      "Beijing University of Posts and Telecommunications",
+      "北京邮电大学",
+      "BUPT"
+    ]
+  },
+  {
+    "name": "City University of Hong Kong",
+    "score": 0.6,
+    "aliases": [
+      "City University of Hong Kong",
+      "香港城市大学",
+      "CityUHK"
+    ]
+  },
+  {
+    "name": "Daegu Gyeongbuk Institute of Science and Technology",
+    "score": 0.6,
+    "aliases": [
+      "DGIST",
+      "Daegu Gyeongbuk Institute of Science and Technology"
+    ]
+  },
+  {
+    "name": "Dalian University of Technology",
+    "score": 0.6,
+    "aliases": [
+      "Dalian University of Technology",
+      "大连理工大学"
+    ]
+  },
+  {
+    "name": "Dyna Robotics",
+    "score": 0.6,
+    "aliases": [
+      "Dyna Robotics"
+    ]
+  },
+  {
+    "name": "Eindhoven University of Technology",
+    "score": 0.6,
+    "aliases": [
+      "Eindhoven University of Technology"
+    ]
+  },
+  {
+    "name": "Engineered Arts",
+    "score": 0.6,
+    "aliases": [
+      "Engineered Arts"
+    ]
+  },
+  {
+    "name": "Flexion",
+    "score": 0.6,
+    "aliases": [
+      "Flexion"
+    ],
+    "match_mode": "exact"
+  },
+  {
+    "name": "Generative Bionics",
+    "score": 0.6,
+    "aliases": [
+      "Generative Bionics"
+    ]
+  },
+  {
+    "name": "Genesis AI",
+    "score": 0.6,
+    "aliases": [
+      "Genesis AI"
+    ]
+  },
+  {
+    "name": "Hanyang University",
+    "score": 0.6,
+    "aliases": [
+      "Hanyang University",
+      "汉阳大学",
+      "Hanyang University（汉阳大学）"
+    ]
+  },
+  {
+    "name": "Harvard University",
+    "score": 0.6,
+    "aliases": [
+      "Harvard University",
+      "哈佛大学"
+    ]
+  },
+  {
+    "name": "Hexagon Robotics",
+    "score": 0.6,
+    "aliases": [
+      "Hexagon Robotics"
+    ]
+  },
+  {
+    "name": "Hunan University",
+    "score": 0.6,
+    "aliases": [
+      "Hunan University",
+      "湖南大学"
+    ]
+  },
+  {
+    "name": "Indian Institute of Technology Delhi",
+    "score": 0.6,
+    "aliases": [
+      "IIT Delhi",
+      "Indian Institute of Technology Delhi"
+    ]
+  },
+  {
+    "name": "Institute of Computing Technology, Chinese Academy of Sciences",
+    "score": 0.6,
+    "aliases": [
+      "Institute of Computing Technology, Chinese Academy of Sciences",
+      "中国科学院计算技术研究所",
+      "Institute of Computing Technology Chinese Academy of Sciences",
+      "Chinese Academy of Sciences, Institute of Computing Technology",
+      "Chinese Academy of Sciences Institute of Computing Technology",
+      "ICT, CAS",
+      "ICT CAS",
+      "中科院计算所",
+      "Institute of Computing Technology, CAS",
+      "Institute of Computing Technology (CAS)",
+      "Institute of Computing Technology,Chinese Academy of Sciences",
+      "Chinese Academy of Sciences,Institute of Computing Technology",
+      "ICT,CAS",
+      "Institute of Computing Technology,CAS",
+      "Institute of Computing Technology(CAS)"
+    ]
+  },
+  {
+    "name": "Institute of Science Tokyo",
+    "score": 0.6,
+    "aliases": [
+      "Institute of Science Tokyo",
+      "东京科学大学",
+      "Institute of Science Tokyo（东京科学大学）"
+    ]
+  },
+  {
+    "name": "Institute of Software, Chinese Academy of Sciences",
+    "score": 0.6,
+    "aliases": [
+      "Institute of Software, Chinese Academy of Sciences",
+      "中国科学院软件研究所",
+      "Institute of Software Chinese Academy of Sciences",
+      "Chinese Academy of Sciences, Institute of Software",
+      "Chinese Academy of Sciences Institute of Software",
+      "ISCAS",
+      "中科院软件所",
+      "Institute of Software, CAS",
+      "Institute of Software (CAS)",
+      "Institute of Software,Chinese Academy of Sciences",
+      "Chinese Academy of Sciences,Institute of Software",
+      "Institute of Software,CAS",
+      "Institute of Software(CAS)"
+    ]
+  },
+  {
+    "name": "King's College London",
+    "score": 0.6,
+    "aliases": [
+      "King's College London"
+    ]
+  },
+  {
+    "name": "Mbodi AI",
+    "score": 0.6,
+    "aliases": [
+      "Mbodi AI"
+    ]
+  },
+  {
+    "name": "Nagoya University",
+    "score": 0.6,
+    "aliases": [
+      "Nagoya University",
+      "名古屋大学",
+      "Nagoya University（名古屋大学）"
+    ]
+  },
+  {
+    "name": "Northeastern University",
+    "score": 0.6,
+    "aliases": [
+      "Northeastern University"
+    ]
+  },
+  {
+    "name": "Northeastern University (China)",
+    "score": 0.6,
+    "aliases": [
+      "Northeastern University (China)",
+      "Northeastern University, China",
+      "Northeastern University, Shenyang",
+      "东北大学"
+    ]
+  },
+  {
+    "name": "Northwestern Polytechnical University",
+    "score": 0.6,
+    "aliases": [
+      "Northwestern Polytechnical University",
+      "西北工业大学"
+    ]
+  },
+  {
+    "name": "Northwestern University",
+    "score": 0.6,
+    "aliases": [
+      "Northwestern University"
+    ]
+  },
+  {
+    "name": "Norwegian University of Science and Technology",
+    "score": 0.6,
+    "aliases": [
+      "NTNU",
+      "挪威科技大学",
+      "NTNU（挪威科技大学）",
+      "Norwegian University of Science and Technology"
+    ]
+  },
+  {
+    "name": "Ohio State University",
+    "score": 0.6,
+    "aliases": [
+      "Ohio State University"
+    ]
+  },
+  {
+    "name": "Purdue University",
+    "score": 0.6,
+    "aliases": [
+      "Purdue University"
+    ]
+  },
+  {
+    "name": "ROBOTIS",
+    "score": 0.6,
+    "aliases": [
+      "ROBOTIS"
+    ]
+  },
+  {
+    "name": "Shandong University",
+    "score": 0.6,
+    "aliases": [
+      "Shandong University",
+      "山东大学"
+    ]
+  },
+  {
+    "name": "ShanghaiTech University",
+    "score": 0.6,
+    "aliases": [
+      "ShanghaiTech University",
+      "上海科技大学"
+    ]
+  },
+  {
+    "name": "Shenzhen University",
+    "score": 0.6,
+    "aliases": [
+      "Shenzhen University",
+      "深圳大学"
+    ]
+  },
+  {
+    "name": "Sunday Robotics",
+    "score": 0.6,
+    "aliases": [
+      "Sunday Robotics"
+    ]
+  },
+  {
+    "name": "Texas A&M University",
+    "score": 0.6,
+    "aliases": [
+      "Texas A&M University"
+    ]
+  },
+  {
+    "name": "Tianjin University",
+    "score": 0.6,
+    "aliases": [
+      "Tianjin University",
+      "天津大学"
+    ]
+  },
+  {
+    "name": "TU Berlin",
+    "score": 0.6,
+    "aliases": [
+      "TU Berlin",
+      "柏林工业大学",
+      "TU Berlin（柏林工业大学）"
+    ]
+  },
+  {
+    "name": "ugo",
+    "score": 0.6,
+    "aliases": [
+      "ugo"
+    ],
+    "match_mode": "exact"
+  },
+  {
+    "name": "Université Grenoble Alpes",
+    "score": 0.6,
+    "aliases": [
+      "Université Grenoble Alpes",
+      "格勒诺布尔-阿尔卑斯大学",
+      "Université Grenoble Alpes（格勒诺布尔-阿尔卑斯大学）"
+    ]
+  },
+  {
+    "name": "University of Alberta",
+    "score": 0.6,
+    "aliases": [
+      "University of Alberta"
+    ]
+  },
+  {
+    "name": "University of Birmingham",
+    "score": 0.6,
+    "aliases": [
+      "University of Birmingham",
+      "伯明翰大学",
+      "University of Birmingham（伯明翰大学）"
+    ]
+  },
+  {
+    "name": "University of California, Los Angeles",
+    "score": 0.6,
+    "aliases": [
+      "University of California, Los Angeles",
+      "University of California Los Angeles",
+      "UCLA",
+      "加州大学洛杉矶分校"
+    ]
+  },
+  {
+    "name": "University of Colorado Boulder",
+    "score": 0.6,
+    "aliases": [
+      "University of Colorado Boulder"
+    ]
+  },
+  {
+    "name": "University of Electronic Science and Technology of China",
+    "score": 0.6,
+    "aliases": [
+      "University of Electronic Science and Technology of China",
+      "电子科技大学",
+      "UESTC"
+    ]
+  },
+  {
+    "name": "University of Nevada, Reno",
+    "score": 0.6,
+    "aliases": [
+      "University of Nevada, Reno",
+      "University of Nevada Reno",
+      "内华达大学里诺分校"
+    ]
+  },
+  {
+    "name": "University of Stuttgart",
+    "score": 0.6,
+    "aliases": [
+      "University of Stuttgart",
+      "斯图加特大学",
+      "University of Stuttgart（斯图加特大学）"
+    ]
+  },
+  {
+    "name": "Wandercraft",
+    "score": 0.6,
+    "aliases": [
+      "Wandercraft"
+    ]
+  },
+  {
+    "name": "Weave Robotics",
+    "score": 0.6,
+    "aliases": [
+      "Weave Robotics"
+    ]
+  },
+  {
+    "name": "World Labs",
+    "score": 0.6,
+    "aliases": [
+      "World Labs"
+    ]
+  },
+  {
+    "name": "Wuhan University",
+    "score": 0.6,
+    "aliases": [
+      "Wuhan University",
+      "武汉大学"
+    ]
+  },
+  {
+    "name": "Yonsei University",
+    "score": 0.6,
+    "aliases": [
+      "Yonsei University",
+      "延世大学",
+      "Yonsei University（延世大学）"
+    ]
+  },
+  {
+    "name": "上海机器人产业技术研究院",
+    "score": 0.6,
+    "aliases": [
+      "上海机器人产业技术研究院"
+    ]
+  },
+  {
+    "name": "奇瑞墨甲机器人",
+    "score": 0.6,
+    "aliases": [
+      "奇瑞墨甲机器人",
+      "AiMOGA",
+      "奇瑞墨甲机器人（AiMOGA）"
+    ]
+  },
+  {
+    "name": "小鹏机器人",
+    "score": 0.6,
+    "aliases": [
+      "小鹏机器人",
+      "XPENG Robotics",
+      "小鹏机器人（XPENG Robotics）"
+    ]
+  },
+  {
+    "name": "拓元智慧",
+    "score": 0.6,
+    "aliases": [
+      "拓元智慧"
+    ]
+  },
+  {
+    "name": "擎朗智能",
+    "score": 0.6,
+    "aliases": [
+      "擎朗智能",
+      "KEENON",
+      "擎朗智能（KEENON）"
+    ]
+  },
+  {
+    "name": "无界动力",
+    "score": 0.6,
+    "aliases": [
+      "无界动力"
+    ]
+  },
+  {
+    "name": "普渡机器人",
+    "score": 0.6,
+    "aliases": [
+      "普渡机器人",
+      "Pudu",
+      "普渡机器人（Pudu）"
+    ]
+  },
+  {
+    "name": "西湖机器人",
+    "score": 0.6,
+    "aliases": [
+      "西湖机器人"
+    ]
+  },
+  {
+    "name": "越疆机器人",
+    "score": 0.6,
+    "aliases": [
+      "越疆机器人",
+      "DOBOT",
+      "越疆机器人（DOBOT）"
+    ]
+  },
+  {
+    "name": "魔法原子",
+    "score": 0.6,
+    "aliases": [
+      "魔法原子",
+      "MagicLab",
+      "魔法原子（MagicLab）"
+    ]
+  }
 ]

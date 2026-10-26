@@ -53,7 +53,7 @@ def test_names_still_need_verbatim_document_evidence(paper):
     )
 
 
-def test_merged_author_blocks_keep_institutions_and_skip_pdf(paper, prepare):
+def test_merged_author_blocks_keep_institutions_when_pdf_temporarily_unavailable(paper, prepare):
     url = paper.metadata_html_url
     enricher, events = prepare(
         paper,
@@ -65,10 +65,10 @@ def test_merged_author_blocks_keep_institutions_and_skip_pdf(paper, prepare):
         },
     )
     details = enricher.enrich(paper)
-    assert details.affiliation_status == "found"
+    assert details.affiliation_status == "partial"
     assert details.completeness(paper)["institution_count"] == 1
-    assert ("pdf", paper.pdf_url) not in events
-    assert ("fetch", PROJECT) not in events
+    assert ("pdf", paper.pdf_url) in events
+    assert ("fetch", PROJECT) in events
 
 
 def test_merge_unions_and_deduplicates_institution_names_without_author_lists(paper):
@@ -81,7 +81,7 @@ def test_merge_unions_and_deduplicates_institution_names_without_author_lists(pa
     assert first.affiliations[0].source == paper.url
 
 
-def test_old_source_backed_cache_is_reused_without_mapping_retries(config, paper):
+def test_old_cache_does_not_bypass_full_source_reconciliation(config, paper):
     enricher = Enricher(config, None, None)
     details = source_details(paper, paper.pdf_url, project=PROJECT, affiliations=[("MIT", [])])
     details.affiliation_status = "partial"
@@ -93,9 +93,8 @@ def test_old_source_backed_cache_is_reused_without_mapping_retries(config, paper
             now=NOW - timedelta(days=2),
         )
         cached = enricher.cached_details(store, paper, now=NOW)
-        assert cached.affiliation_status == "found"
-        assert not cached.needs_refresh(paper)
-        assert store.cached("details", enricher.key(paper)) is not None
+        assert cached is None
+        assert store.cached("details", enricher.key(paper)) is None
 
 
 def test_old_mapping_negative_does_not_block_new_extraction_or_override_new_cache(config, paper):

@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def config(tmp_path, monkeypatch):
     # Keep behavior tests independent of the user's editable subscription profile.
     cfg = Config(
-        arxiv=ArxivSettings(categories=["cs.AI", "cs.CL", "cs.LG", "cs.CV"]),
+        arxiv=ArxivSettings(categories=["cs.AI", "cs.CL", "cs.LG", "cs.CV"], source="api"),
         interests=[
             Interest(
                 id="agents", label="Agents", text="Proposes methods for language model agents."

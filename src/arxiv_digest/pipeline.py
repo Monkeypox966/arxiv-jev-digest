@@ -5,7 +5,7 @@ import logging
 import uuid
 from collections.abc import Callable, Iterable
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -22,9 +22,10 @@ from .clients import (
 from .config import Config, recipients, validate_credentials
 from .enrichment import Enricher
 from .http import ServiceError
-from .mailer import SMTPMailer, build_message
+from .institution_assessment import InstitutionAssessor
+from .mailer import SMTPMailer, build_message, send_prepared
 from .models import Decision, Paper, Pick, Summary
-from .ranking import passes_institution_filter, rank_paper
+from .ranking import manual_matches, normalize, passes_institution_filter, rank_paper
 from .report import write_report
 from .store import Store, recipient_key
 from .usage import UsageTracker
@@ -102,6 +103,8 @@ def run(
             label
             for key, label in (
                 ("metadata_missing", "部分候选尚未提取到有来源的署名机构，报告已标注。"),
+                ("metadata_partial", "部分机构清单尚未完成 PDF 核查，未发送候选可有限补查。"),
+                ("institution_deferred", "部分机构达到本轮评估额度，未发送候选已安排补评。"),
                 ("metadata_unavailable", "部分元数据来源暂不可用，不等同于论文没有机构或项目。"),
             )
             if result.get(key)
@@ -162,6 +165,7 @@ def _run(
         store.prune(config.retention.cache_days, now=now)
         if not dry_run:
             for address in targets:
+                store.discard_prepared(recipient_key(address))
                 pending = store.pending(recipient_key(address))
                 if pending:
                     raise ServiceError(
@@ -237,7 +241,7 @@ def _run(
                     papers[paper.id] = paper
         fetched = list(papers.values())
         LOG.info("Fetched %d unique arXiv candidate papers", len(fetched))
-        pools, retried = {}, set()
+        pools, retried, assessment_retried = {}, set(), set()
         for address in targets:
             pool = {}
             for category, group in groups.items():
@@ -248,7 +252,9 @@ def _run(
                         or not paper.announced
                         or paper.announced == latest_by_group[category]
                         or (checkpoint and paper.announced > checkpoint)
-                    ) and store.eligible(recipient_key(address), profile, paper.id, now=now):
+                    ) and store.eligible(
+                        recipient_key(address), profile, paper.tracking_id, now=now
+                    ):
                         pool[paper.id] = papers[paper.id]
             if config.enrichment.enabled and config.enrichment.retry_missing_affiliations:
                 for raw in store.due_metadata(
@@ -272,6 +278,28 @@ def _run(
                     pool[paper.id] = paper
                     papers[paper.id] = paper
                     retried.add(paper.id)
+            if config.ranking.enabled and config.ranking.assess_unlisted:
+                for raw in store.due_assessments(
+                    recipient_key(address),
+                    profile,
+                    now=now,
+                    limit=config.ranking.assessment_retry_limit_per_run,
+                ):
+                    paper = papers.get(raw["id"]) or Paper(**raw)
+                    categories = (
+                        paper.categories
+                        if config.arxiv.include_cross_lists
+                        else paper.categories[:1]
+                    )
+                    if not any(
+                        category_matches(category, allowed)
+                        for category in categories
+                        for allowed in config.arxiv.categories
+                    ):
+                        continue
+                    pool[paper.id] = paper
+                    papers[paper.id] = paper
+                    assessment_retried.add(paper.id)
             pools[address] = list(pool.values())
         wanted = {p.id: p for pool in pools.values() for p in pool}
         decisions = {}
@@ -324,12 +352,32 @@ def _run(
                     LOG.info("Affiliation metadata progress: %d/%d", index, len(group))
 
         rankings = {}
+        institution_assessments = {}
+        institution_lookups = 0
         if config.ranking.enabled:
             # Every relevant candidate gets the same opportunity for affiliation
             # verification. Enriching only the old Top K would bias selection.
             enrich_papers(qualified_papers)
+            if config.ranking.assess_unlisted:
+                assessor = InstitutionAssessor(config, client, deepseek, store, now=now)
+                for paper_id in sorted(details, key=lambda id: (id not in assessment_retried, id)):
+                    detail = details[paper_id]
+                    for affiliation in detail.verified_affiliations():
+                        name = affiliation.institution
+                        key = normalize(name)
+                        if key not in institution_assessments and not manual_matches(
+                            name, config.ranking
+                        ):
+                            institution_assessments[key] = assessor.assess(name)
+                institution_lookups = assessor.lookups
             rankings = {
-                p.id: rank_paper(p, decisions[p.id].score, details.get(p.id), config.ranking)
+                p.id: rank_paper(
+                    p,
+                    decisions[p.id].score,
+                    details.get(p.id),
+                    config.ranking,
+                    assessments=institution_assessments,
+                )
                 for p in qualified_papers.values()
             }
         selected = {}
@@ -395,20 +443,32 @@ def _run(
         stats = {
             **daily_stats,
             "fetched": len(fetched),
+            "fetched_by_type": {
+                kind: sum(p.announcement_type == kind for p in fetched)
+                for kind in ("new", "cross", "replace")
+            },
             "metadata_retries": len(retried),
+            "institution_assessment_retries": len(assessment_retried),
             "new_candidates": len(wanted),
             "jev_calls": len(uncached),
             "summary_calls": len(unsummarized),
             "relevance_qualified": len(qualified_papers),
             "metadata_lookups": detail_calls,
+            "institution_assessment_lookups": institution_lookups,
+            "institution_deferred": sum(item.deferred for item in institution_assessments.values()),
             "institution_filtered": sum(
                 not passes_institution_filter(r, config.ranking) for r in rankings.values()
             ),
             "institution_unknown": sum(r.status == "unknown" for r in rankings.values()),
             "institution_unlisted": sum(r.status == "unlisted" for r in rankings.values()),
             "metadata_missing": sum(not d.verified_affiliations() for d in details.values()),
+            "metadata_partial": sum(d.affiliation_status == "partial" for d in details.values()),
             "metadata_unavailable": sum(bool(d.failed_sources) for d in details.values()),
             "selected_unique": len(summary_papers),
+            "selected_by_type": {
+                kind: sum(p.announcement_type == kind for p in summary_papers.values())
+                for kind in ("new", "cross", "replace")
+            },
             "emails_sent": 0,
             "dry_run": dry_run,
             "announcement_dates": sorted({p.announced for p in fetched if p.announced}),
@@ -432,11 +492,48 @@ def _run(
             if dry_run:
                 continue
             key = recipient_key(address)
+            if config.ranking.enabled and config.ranking.assess_unlisted:
+                chosen = {p.id for p in selected[address]}
+                qualified_ids = {p.id for p in qualified[address]}
+                for paper in pools[address]:
+                    ranking = rankings.get(paper.id)
+                    incomplete = (
+                        [item for item in ranking.assessments if item.status == "neutral"]
+                        if ranking
+                        else []
+                    )
+                    if (
+                        paper.id in qualified_ids
+                        and paper.id not in chosen
+                        and ranking.institution_score < 1
+                        and incomplete
+                    ):
+                        deadlines = []
+                        for item in incomplete:
+                            try:
+                                assessed = datetime.fromisoformat(item.assessed_on)
+                                if assessed.tzinfo is None:
+                                    assessed = now
+                            except ValueError:
+                                assessed = now
+                            hours = 24 if item.deferred else config.ranking.assessment_retry_hours
+                            deadlines.append(assessed + timedelta(hours=hours))
+                        store.queue_assessment_retry(
+                            key,
+                            profile,
+                            paper.to_dict(),
+                            now=now,
+                            retry_at=max(now + timedelta(hours=1), min(deadlines)),
+                        )
+                    elif paper.id not in chosen:
+                        store.clear_assessment_retry(key, profile, paper.tracking_id)
             if config.enrichment.enabled and config.enrichment.retry_missing_affiliations:
                 chosen = {p.id for p in selected[address]}
                 for paper in qualified[address]:
                     detail = details.get(paper.id)
-                    if detail and not detail.verified_affiliations():
+                    if detail and (
+                        not detail.verified_affiliations() or detail.affiliation_status == "partial"
+                    ):
                         if paper.id not in chosen:
                             store.queue_metadata_retry(
                                 key,
@@ -446,9 +543,9 @@ def _run(
                                 delay_hours=config.enrichment.incomplete_cache_hours,
                                 max_attempts=config.enrichment.retry_attempts,
                             )
-                    elif detail is not None:
-                        store.clear_metadata_retry(key, None, paper.id)
-            candidates = [p.id for p in pools[address]]
+                    elif detail is not None and paper.id not in chosen:
+                        store.clear_metadata_retry(key, None, paper.tracking_id)
+            candidates = [p.tracking_id for p in pools[address]]
             if not picks and not config.email.send_empty:
                 store.mark_reviewed(key, profile, candidates, checkpoint_updates=updates)
                 LOG.info("No new matches for recipient %d; email skipped", index)
@@ -462,14 +559,19 @@ def _run(
                     candidates,
                     [p.paper.id for p in picks],
                     checkpoint_updates=updates,
+                    staged=True,
+                    selected_versions=[
+                        (p.paper.id, p.paper.versioned_id.removeprefix(p.paper.id))
+                        for p in picks
+                        if p.paper.version
+                    ],
                 )
-                if outbox_hook:
-                    # Persist the pending record remotely before SMTP DATA. An
-                    # abruptly lost runner must not lose the duplicate-send guard.
-                    outbox_hook()
-                message = build_message(config, address, delivery, subject, text, html, now)
-                mailer.send(message)
-                store.resolve(delivery, "sent")
+                try:
+                    message = build_message(config, address, delivery, subject, text, html, now)
+                except BaseException:
+                    store.cancel_before_send(delivery)
+                    raise
+                send_prepared(store, delivery, mailer, message, outbox_hook=outbox_hook)
                 stats["emails_sent"] += 1
                 LOG.info("Delivered digest to recipient %d", index)
         LOG.info(

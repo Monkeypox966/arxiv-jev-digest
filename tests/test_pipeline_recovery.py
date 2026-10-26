@@ -70,7 +70,7 @@ def test_budget_failure_writes_health_and_usage_then_resumes_completed_decision(
     assert read_json(Path(result["output_dir"]) / "health.json")["status"] == "success"
 
 
-def test_outbox_persistence_failure_blocks_smtp_and_leaves_pending(config, summary):
+def test_outbox_persistence_failure_blocks_smtp_but_allows_safe_retry(config, summary):
     config.selection.top_k = 1
     calls, messages, events = counts(), [], []
 
@@ -85,7 +85,11 @@ def test_outbox_persistence_failure_blocks_smtp_and_leaves_pending(config, summa
 
     def persist():
         with Store(config.state_dir) as second_connection:
-            assert len(second_connection.pending(RECIPIENT)) == 1
+            assert not second_connection.pending(RECIPIENT)
+            assert (
+                second_connection.db.execute("SELECT status FROM outbox").fetchone()[0]
+                == "prepared"
+            )
         events.append("persist_failed")
         raise ServiceError("Simulated remote outbox persistence failure")
 
@@ -101,11 +105,12 @@ def test_outbox_persistence_failure_blocks_smtp_and_leaves_pending(config, summa
         assert events == ["authenticated", "persist_failed"]
         assert messages == []
         with Store(config.state_dir) as store:
-            assert len(store.pending(RECIPIENT)) == 1
+            assert not store.pending(RECIPIENT)
+            assert store.db.execute("SELECT count(*) FROM outbox").fetchone()[0] == 0
         before = dict(calls)
-        with pytest.raises(ServiceError, match="Unresolved email attempt"):
-            run(config, client, mailer_factory=lambda _: ObservedMailer(messages), now=NOW)
-    assert calls == before
+        result = run(config, client, mailer_factory=lambda _: ObservedMailer(messages), now=NOW)
+    assert result["emails_sent"] == 1
+    assert calls["jev"] == before["jev"] and calls["summary"] == before["summary"]
 
 
 def test_outbox_is_committed_and_persisted_after_login_before_smtp_send(config, summary):
@@ -118,7 +123,7 @@ def test_outbox_is_committed_and_persisted_after_login_before_smtp_send(config, 
             return self
 
         def send(self, message):
-            assert events == ["authenticated", "pending_persisted"]
+            assert events == ["authenticated", "prepared_persisted", "pending_persisted"]
             with Store(config.state_dir) as second_connection:
                 assert second_connection.pending(RECIPIENT)[0]["id"] == pending_id[0]
             assert message["Message-ID"].startswith("<" + pending_id[0] + "@")
@@ -126,10 +131,13 @@ def test_outbox_is_committed_and_persisted_after_login_before_smtp_send(config, 
             super().send(message)
 
     def persist():
-        assert events == ["authenticated"]
         with Store(config.state_dir) as second_connection:
-            pending_id.append(second_connection.pending(RECIPIENT)[0]["id"])
-        events.append("pending_persisted")
+            delivery, phase = second_connection.db.execute(
+                "SELECT id, status FROM outbox"
+            ).fetchone()
+            if phase == "pending":
+                pending_id.append(delivery)
+        events.append(phase + "_persisted")
 
     with httpx.Client(transport=transport(config, summary, counts())) as client:
         result = run(
@@ -139,7 +147,7 @@ def test_outbox_is_committed_and_persisted_after_login_before_smtp_send(config, 
             outbox_hook=persist,
             now=NOW,
         )
-    assert events == ["authenticated", "pending_persisted", "send"]
+    assert events == ["authenticated", "prepared_persisted", "pending_persisted", "send"]
     assert result["emails_sent"] == len(messages) == 1
     with Store(config.state_dir) as store:
         assert store.pending(RECIPIENT) == []

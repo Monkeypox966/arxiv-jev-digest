@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
@@ -7,6 +8,44 @@ from email.utils import format_datetime, formataddr
 
 from .config import Config, email_address, require_env
 from .http import ServiceError
+
+LOG = logging.getLogger(__name__)
+
+
+def persist_safe_cleanup(outbox_hook):
+    if outbox_hook:
+        try:
+            outbox_hook()
+        except Exception:
+            # The workflow's final state save will try again; preserve the original failure.
+            LOG.warning("Safe delivery cleanup could not yet be persisted")
+
+
+class DeliveryNotAccepted(ServiceError):
+    """The SMTP server explicitly rejected this single-recipient message."""
+
+
+def send_prepared(store, delivery, mailer, message, *, outbox_hook=None):
+    """Persist safe preparation, then uncertain intent, before permitting SMTP DATA."""
+    try:
+        if outbox_hook:
+            outbox_hook()
+        store.begin_attempt(delivery)
+        if outbox_hook:
+            outbox_hook()
+    except BaseException:
+        # send() has never been invoked: this is a provably unsent delivery.
+        store.cancel_before_send(delivery)
+        persist_safe_cleanup(outbox_hook)
+        raise
+    try:
+        mailer.send(message)
+    except DeliveryNotAccepted:
+        store.resolve(delivery, "retry")
+        persist_safe_cleanup(outbox_hook)
+        raise
+    # Other exceptions leave pending intact: the server may have accepted DATA.
+    store.resolve(delivery, "sent")
 
 
 def build_message(
@@ -55,7 +94,9 @@ class SMTPMailer:
         try:
             refused = self.smtp.send_message(message)
             if refused:
-                raise ServiceError("SMTP: recipient refused")
+                raise DeliveryNotAccepted("SMTP: recipient refused")
+        except (smtplib.SMTPRecipientsRefused, smtplib.SMTPSenderRefused, smtplib.SMTPDataError):
+            raise DeliveryNotAccepted("SMTP: message explicitly rejected; safe to retry") from None
         except (smtplib.SMTPException, OSError):
             raise ServiceError(
                 "SMTP: delivery failed or acceptance is uncertain; inspect the pending delivery"

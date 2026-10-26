@@ -101,7 +101,12 @@ def test_successful_sources_mark_found_fields(paper, prepare):
     html_url = paper.metadata_html_url
     enricher, events = prepare(
         paper,
-        html={paper.url: abs_page(paper, project=PROJECT), html_url: "<article>header</article>"},
+        html={
+            paper.url: abs_page(paper, project=PROJECT),
+            html_url: "<article>header</article>",
+            PROJECT: f"<article>{paper.title}</article>",
+        },
+        pdf=("Readable PDF header", []),
         extracted={
             paper.url: source_details(paper, paper.url, project=PROJECT),
             html_url: source_details(paper, html_url, affiliations=[("Example", paper.authors)]),
@@ -111,7 +116,7 @@ def test_successful_sources_mark_found_fields(paper, prepare):
     assert result.project_status == result.affiliation_status == "found"
     assert not result.needs_refresh(paper)
     assert result.failed_sources == []
-    assert ("pdf", paper.pdf_url) not in events
+    assert ("pdf", paper.pdf_url) in events
 
 
 def test_all_sources_failing_is_unavailable_not_confirmed_absence(paper, prepare):
@@ -122,7 +127,7 @@ def test_all_sources_failing_is_unavailable_not_confirmed_absence(paper, prepare
     assert result.needs_refresh(paper)
 
 
-def test_institutions_without_mappings_do_not_trigger_pdf_or_project_lookup(paper, prepare):
+def test_institutions_without_mappings_survive_failed_pdf_reconciliation(paper, prepare):
     paper = replace(paper, authors=["A. Author", "B. Author"])
     url = paper.metadata_html_url
     enricher, events = prepare(
@@ -137,10 +142,10 @@ def test_institutions_without_mappings_do_not_trigger_pdf_or_project_lookup(pape
         },
     )
     result = enricher.enrich(paper)
-    assert result.affiliation_status == "found"
-    assert not result.needs_refresh(paper)
-    assert ("pdf", paper.pdf_url) not in events
-    assert ("fetch", PROJECT) not in events
+    assert result.affiliation_status == "partial"
+    assert result.needs_refresh(paper)
+    assert ("pdf", paper.pdf_url) in events
+    assert ("fetch", PROJECT) in events
 
 
 def test_authentication_or_budget_failure_is_not_swallowed(paper, prepare):
@@ -171,7 +176,7 @@ def test_complete_fields_survive_a_nonfatal_source_failure(paper, prepare):
     )
     result = enricher.enrich(paper)
     assert result.project_status == result.affiliation_status == "found"
-    assert result.failed_sources == [html_url]
+    assert result.failed_sources == [html_url, PROJECT]
     assert not result.needs_refresh(paper)
 
 

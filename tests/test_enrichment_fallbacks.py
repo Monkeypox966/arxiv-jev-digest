@@ -12,6 +12,7 @@ from arxiv_digest.enrichment import (
     ensure_public_host,
     html_evidence,
     merge_details,
+    project_identity,
     public_url,
 )
 from arxiv_digest.http import ServiceError
@@ -128,10 +129,22 @@ def test_html_unlabelled_main_link_is_kept_but_bibliography_is_excluded():
     )
     assert PROJECT in urls
     assert "https://citation.example/" not in urls
+
+
+def test_project_cards_do_not_hide_paper_identity_or_institutions(paper):
+    text, urls = html_evidence(
+        "<main><article><h2>One GPU. Three hours.</h2></article>"
+        "<article><h2>Run the demo</h2></article>"
+        f"<section><h2>{paper.title}</h2><p>UC Berkeley</p>"
+        f'<p>{paper.authors[0]}</p><a href="{PROJECT}">Project</a></section></main>'
+    )
+    assert project_identity(paper, text)
+    assert "UC Berkeley" in text
+    assert PROJECT in urls
     assert "citation.example" not in text
 
 
-def test_abs_project_and_html_affiliations_combine_without_pdf(paper, prepare):
+def test_abs_project_and_html_affiliations_still_reconcile_pdf(paper, prepare):
     html_url = f"https://arxiv.org/html/{paper.id}"
     enricher, events = prepare(
         paper,
@@ -151,7 +164,7 @@ def test_abs_project_and_html_affiliations_combine_without_pdf(paper, prepare):
     assert result.project_source == paper.url
     assert result.affiliations[0].institution == "Example University"
     assert result.affiliations[0].source == html_url
-    assert ("pdf", paper.pdf_url) not in events
+    assert ("pdf", paper.pdf_url) in events
 
 
 def test_html_affiliations_do_not_stop_pdf_search_for_project(paper, prepare):
@@ -247,7 +260,7 @@ def test_unrelated_project_page_cannot_supply_institutions(paper, prepare):
     assert result.project_url == PROJECT
 
 
-def test_unknown_author_correspondence_does_not_cause_extra_source_requests(paper, prepare):
+def test_unknown_author_correspondence_keeps_institutions_during_reconciliation(paper, prepare):
     paper = replace(paper, authors=["A. Author", "B. Author", "C. Author"])
     url = paper.metadata_html_url
     enricher, events = prepare(
@@ -263,8 +276,8 @@ def test_unknown_author_correspondence_does_not_cause_extra_source_requests(pape
     )
     result = enricher.enrich(paper)
     assert [a.institution for a in result.affiliations] == ["Paper University"]
-    assert ("pdf", paper.pdf_url) not in events
-    assert ("fetch", PROJECT) not in events
+    assert ("pdf", paper.pdf_url) in events
+    assert ("fetch", PROJECT) in events
 
 
 def test_later_source_failures_do_not_erase_abs_project(paper, prepare):
@@ -300,7 +313,7 @@ def test_lost_html_author_markers_do_not_discard_explicit_institutions(paper, pr
     result = enricher.enrich(paper)
     assert [a.institution for a in result.affiliations] == ["Paper University"]
     assert result.affiliations[0].source == url
-    assert ("pdf", paper.pdf_url) not in events
+    assert ("pdf", paper.pdf_url) in events
 
 
 @pytest.mark.parametrize(

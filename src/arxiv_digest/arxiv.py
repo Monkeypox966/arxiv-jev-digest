@@ -159,6 +159,133 @@ def category_matches(category: str, allowed: str) -> bool:
     return category == allowed or category.startswith(allowed + ".")
 
 
+NEW_SECTIONS = {
+    "new submissions": "new",
+    "cross submissions": "cross",
+    "replacement submissions": "replace",
+}
+
+
+def parse_new_page(text: str) -> tuple[str, list[tuple[str, list[str], int]], int]:
+    """Read /new's dated three-section page, including partial pagination slices."""
+    soup = BeautifulSoup(text, "html.parser")
+    headings = soup.find_all("h3")
+    date_match = next(
+        (
+            match
+            for heading in headings
+            if (
+                match := re.search(
+                    r"Showing new listings for ([A-Za-z]+, \d{1,2} [A-Za-z]+ \d{4})",
+                    heading.get_text(" ", strip=True),
+                )
+            )
+        ),
+        None,
+    )
+    if not date_match:
+        raise ServiceError("arXiv /new: missing announcement date")
+    try:
+        announced = datetime.strptime(date_match[1], "%A, %d %B %Y").date().isoformat()
+    except ValueError:
+        raise ServiceError("arXiv /new: invalid announcement date") from None
+    total_match = re.search(r"\bTotal of\s+([\d,]+)\s+entries\b", soup.get_text(" "))
+    if not total_match:
+        raise ServiceError("arXiv /new: missing total entry count")
+    total = int(total_match[1].replace(",", ""))
+    groups = []
+    for heading in headings:
+        label = heading.get_text(" ", strip=True)
+        match = re.fullmatch(
+            r"(New submissions|Cross submissions|Replacement submissions) "
+            r"\(showing ([\d,]+) of ([\d,]+) entries\s*\)",
+            label,
+            re.I,
+        )
+        if not match:
+            continue
+        ids = []
+        for element in heading.next_elements:
+            if getattr(element, "name", None) == "h3":
+                break
+            if getattr(element, "name", None) == "dt":
+                anchor = element.select_one('a[title="Abstract"]')
+                if anchor is not None:
+                    ids.append(normalize_id(urljoin("https://arxiv.org", anchor["href"])))
+        shown, expected = (int(v.replace(",", "")) for v in match.groups()[1:])
+        if len(ids) != shown or shown > expected or len(set(ids)) != len(ids):
+            raise ServiceError("arXiv /new: truncated section or duplicate IDs")
+        groups.append((NEW_SECTIONS[match[1].casefold()], ids, expected))
+    if not groups and total:
+        raise ServiceError("arXiv /new: missing submission sections")
+    if len(soup.select('dt a[title="Abstract"]')) != sum(len(ids) for _, ids, _ in groups):
+        raise ServiceError("arXiv /new: unrecognized submission section")
+    return announced, groups, total
+
+
+def fetch_new(settings: ArxivSettings, client: httpx.Client, limiter: RateLimiter) -> list[Paper]:
+    discovered = {}
+    for category in settings.categories:
+        offset, total, announced = 0, None, None
+        section_ids, section_totals, seen = {}, {}, set()
+        while True:
+            response = request(
+                client,
+                "GET",
+                f"https://arxiv.org/list/{category}/new",
+                service="arXiv new",
+                limiter=limiter,
+                params={"skip": offset, "show": 2000},
+            )
+            day, groups, count = parse_new_page(response.text)
+            if count > 30000:
+                raise ServiceError("arXiv /new: announcement exceeds the 30000-entry scan limit")
+            if total is not None and (total != count or announced != day):
+                raise ServiceError("arXiv /new: batch changed during pagination; rerun")
+            total, announced = count, day
+            page_count = 0
+            for kind, ids, expected in groups:
+                if kind in section_totals and section_totals[kind] != expected:
+                    raise ServiceError("arXiv /new: section changed during pagination; rerun")
+                if seen.intersection(ids):
+                    raise ServiceError("arXiv /new: repeated IDs during pagination")
+                section_totals[kind] = expected
+                section_ids.setdefault(kind, []).extend(ids)
+                seen.update(ids)
+                page_count += len(ids)
+            if offset + page_count > total or (not page_count and offset < total):
+                raise ServiceError("arXiv /new: invalid pagination count")
+            offset += page_count
+            if offset == total:
+                break
+        if any(len(section_ids[kind]) != expected for kind, expected in section_totals.items()):
+            raise ServiceError("arXiv /new: incomplete submission section")
+        for kind, ids in section_ids.items():
+            if kind == "cross" and not settings.include_cross_lists:
+                continue
+            for id in ids:
+                previous = discovered.get(id)
+                # One paper can be listed in several subscribed categories.
+                priority = {"new": 0, "cross": 1, "replace": 2}
+                if previous and previous[0] != announced:
+                    raise ServiceError("arXiv /new: category announcement dates disagree")
+                if not previous or priority[kind] < priority[previous[1]]:
+                    discovered[id] = (announced, kind)
+    if len(discovered) > settings.max_candidates:
+        raise ServiceError("arXiv /new: candidate limit exceeded")
+    papers = []
+    for paper in fetch_by_ids(settings, client, list(discovered), limiter):
+        day, kind = discovered[paper.id]
+        if not settings.include_cross_lists and not any(
+            category_matches(paper.categories[0], category) for category in settings.categories
+        ):
+            continue
+        if kind == "replace" and not paper.version:
+            raise ServiceError("arXiv /new: replacement metadata has no explicit version")
+        papers.append(replace(paper, announced=day, announcement_type=kind))
+    return papers
+
+
 def parse_latest_listing(text: str) -> tuple[str, list[str]]:
     soup = BeautifulSoup(text, "html.parser")
     heading = soup.find("h3")
@@ -379,6 +506,8 @@ def fetch_papers(
     since: str | None = None,
 ) -> list[Paper]:
     limiter = RateLimiter(settings.request_interval_seconds)
+    if settings.source == "new":
+        return fetch_new(settings, client, limiter)
     if settings.source == "latest":
         return fetch_latest(settings, client, limiter, since=since)
     if settings.source == "rss":

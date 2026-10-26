@@ -7,20 +7,20 @@
 只需要知道论文来自哪些机构，不再提取、校正或补全逐作者机构对应。机构以来源文档中的原文名称保存，合并去重后直接匹配可编辑机构名单，取最高机构分；机构数量不累加分数。
 
 - 采用论文署名区或明确的作者团队机构声明，不把赞助方、基金、致谢、参考文献、机器人品牌或邮箱域名当作署名机构。
-- HTML 丢失上标或合并作者姓名，不再成为丢弃机构或强制查 PDF 的理由。
+- HTML 丢失上标或合并作者姓名，不再成为丢弃机构的理由；PDF 核查针对机构清单完整性，不针对作者对应。
 - 每项机构保留来源。旧数据中的 `authors` 字段可以读取，但不参与评分、完整性判断和补查。
 - `affiliation_status = found` 表示提取到了带来源的机构，不表示已经穷尽全部署名单位；不再报告作者覆盖率。
-- 新提取策略使用 v6 缓存；旧 v5 有来源的机构清单可复用，旧空结果不阻止重新提取。
+- 新提取策略使用 v7 缓存；旧 v5/v6 结果不能证明已经补全各来源机构，需要重新提取。原 Jev 和摘要缓存独立处理。
 
 ## 查找流程
 
 1. 版本匹配的人工核实记录优先使用。
 2. 读取 arXiv abs 首页摘要与 Comments 中的项目链接，再查论文 HTML 的机构与项目资料；HTML 参考文献区域移除。
-3. 缺项目链接或未提取到有来源机构时查 PDF。前两页用于机构提取；最多扫描 40 页正文可点击链接和明文 URL，跳过 References / Bibliography，可在明确附录标题后恢复扫描。
-4. 仍未找到机构、且有确认的项目链接时，再查该项目页。用论文标题，或 ID 与作者组合核对页面身份；最多查一个项目页，不递归访问作者主页。
+3. 即使 HTML 已有机构和项目链接，也核查 PDF，补全可能遗漏的合作机构。前两页用于机构提取；最多扫描 40 页正文可点击链接和明文 URL，跳过 References / Bibliography，可在明确附录标题后恢复扫描。
+4. 有确认的项目链接时核查该项目页，补充机构。用论文标题，或 ID 与作者组合核对页面身份；最多查一个项目页，不递归访问作者主页。
 5. 按机构名称去重合并，不按作者覆盖或脚注标号处理。项目链接与机构分别保留来源，某来源失败不会抹去先前结果。
 
-已有项目链接与机构清单后，不为补作者对应关系继续查 PDF 或项目页。项目链接缺失仍可继续查 PDF，此时也可补充该 PDF 中的机构。
+自动提取合并 abs、HTML、PDF 和一个确认项目页的机构清单。版本匹配且资料齐全的人工核实记录可直接复用。PDF 读取失败但已有部分机构时标记 `partial`，保留可用信息并使用短缓存补查。新增来源读取和模型提取计入总预算。
 
 `project_source` 保存项目链接来源，`affiliations[].source` 保存机构来源；原有人工记录可使用整条记录的来源列表。来源级模型备注保存在 JSON 的 `source_diagnostics`，邮件不展示中间核查过程。
 
@@ -28,9 +28,9 @@
 
 外部请求校验公开地址、每次重定向、超时及 2 MiB 页面上限。PDF 默认最多 25 MiB，不运行页面脚本，也不做 OCR。
 
-配置仍在 `config.toml` 的 `[enrichment]`：`incomplete_cache_hours = 24`，`retry_missing_affiliations = true`，`retry_attempts = 3`，`retry_limit_per_run = 20`。补查队列只针对未发送且尚未提取到机构的候选；已有机构则不再补作者对应。
+配置仍在 `config.toml` 的 `[enrichment]`：`incomplete_cache_hours = 24`，`retry_missing_affiliations = true`，`retry_attempts = 3`，`retry_limit_per_run = 20`。补查队列针对未发送且机构缺失或 PDF 暂不可读的候选；不为作者对应关系补查。
 
-## 2026-10-26 机构清单真实验证
+## 2026-10-26 早期 v6 机构清单真实验证（历史记录）
 
 [线上 inspect](https://github.com/Monkeypox966/arxiv-jev-digest/actions/runs/40262286250) 对三篇论文使用新提示词重新提取，全部成功；没有调用 Jev、没有发邮件、没有推进论文发送或公告历史。
 
@@ -58,7 +58,7 @@
 | [BeyondMimic / 2508.08241](https://arxiv.org/abs/2508.08241) | abs Comments 中的[项目网站](https://beyondmimic.github.io/) | 当前 v4 的 HTML 丢失多数作者机构标记，PDF 首页有完整 Berkeley / Stanford 对应关系。项目网站比当前论文少一位作者。 |
 | [Humanoid-GPT / 2606.03985](https://arxiv.org/abs/2606.03985) | abs 无项目；[HTML](https://arxiv.org/html/2606.03985v1) 和 PDF 首页有[项目网站](https://qizekun.github.io/Humanoid-GPT/)及代码 | HTML 的作者机构映射损坏；PDF 可用。项目网站与论文还有真实署名差异。 |
 
-Humanoid-GPT 的 [PDF](https://arxiv.org/pdf/2606.03985) 将 Xuchuan Chen 标为清华 + Galbot，将 Sikai Liang 标为 Galbot + 上海交大；项目网站分别为 Galbot + 北航、仅 Galbot。这说明项目页应作为补缺来源。自动流程不是对所有来源进行全面交叉审计：已有完整论文署名时，不会为了发现冲突而强制抓项目页。
+Humanoid-GPT 的 [PDF](https://arxiv.org/pdf/2606.03985) 将 Xuchuan Chen 标为清华 + Galbot，将 Sikai Liang 标为 Galbot + 上海交大；项目网站分别为 Galbot + 北航、仅 Galbot。这说明项目页应作为补缺来源。当前自动流程补充各来源的机构清单，但不对逐作者署名关系进行交叉审计。
 
 新增回归覆盖 abs 摘要 / Comments、普通锚点、HTML/PDF 字段合并、部分作者映射、项目身份不符、后续失败保留结果、PDF 第三页明文链接、参考文献排除、扫描限额和外链访问边界。原有筛选、摘要和邮件去重测试同时保留。
 

@@ -7,17 +7,16 @@ compact_summaries = true
 [arxiv]
 # Category filter only: all fetched papers go through Jev; no keyword prefilter.
 categories = ["cs.RO"]
-# "api": rolling, paginated window for recovery after missed runs.
-# "rss": latest announcement only; no historical catch-up.
-source = "latest"
+# Daily discovery uses /new, including new, cross-listed and replacement papers.
+# Explicit recovery uses an API submission window; /new has no historical archive.
+source = "new"
 lookback_days = 7
 page_size = 200
 # Fail visibly rather than silently truncating the candidate pool.
 max_candidates = 10000
 request_interval_seconds = 3.1
 include_cross_lists = true
-catch_up = true
-catch_up_max_days = 14 # Exact dates only; fail if outside arXiv recent coverage.
+catch_up = false # /new only contains the current batch; recover missed days explicitly.
 
 [jev]
 backend = "typesafe" # or "openrouter" with OPENROUTER_API_KEY
@@ -33,7 +32,7 @@ timeout_seconds = 60
 attempts = 3
 
 [selection]
-top_k = 10
+top_k = 15 # Total across all three sections; never fill below the relevance/quality gates.
 min_score = 0.60
 exclude_threshold = 0.85
 combine = "max" # or "noisy_or"; composed scores are ranking signals
@@ -42,9 +41,16 @@ combine = "max" # or "noisy_or"; composed scores are ranking signals
 # Relevance gate first; verified institution filter and ranking before Top K.
 enabled = true
 institution_weight = 0.35 # final = 0.65 * relevance + 0.35 * institution
-min_institution_score = 0.60 # applies to institutions with an explicit configured score
+min_institution_score = 0.80 # Keep verified S/A tiers; filter B, not missing evidence.
 unknown_policy = "keep" # "exclude" for strict filtering when metadata is unavailable
 unlisted_policy = "keep" # absence from a preference list is not a low-quality verdict
+neutral_score = 0.60 # Neutral baseline when institution strength cannot be verified.
+assess_unlisted = true # ROR identity + official website evidence + model-assisted assessment.
+assessment_cache_days = 30
+assessment_retry_hours = 168 # Recheck insufficient evidence after 7 days.
+assessment_min_confidence = 0.80
+assessment_limit_per_run = 12 # Uncached institutions; model retries also count toward API budgets.
+assessment_retry_limit_per_run = 20 # Reconsider unsent candidates with deferred assessments.
 # Defaults: src/arxiv_digest/data/institutions.json; user preference, not a league table.
 # [[ranking.institutions]] entries replace the bundled list (see docs/ranking.md).
 
@@ -71,7 +77,7 @@ weight = 1.0
 [[interests]]
 id = "tracking"
 label = "动作追踪与模仿"
-text = "The paper contributes reference-motion tracking, motion imitation, motion retargeting, motion transitions, or human-to-robot teleoperation for humanoid or bipedal control, including Unitree G1. Require this control connection in the supplied title or abstract. Object tracking, generic imitation learning on robot arms, and citations of humanoid tracking work are insufficient. A humanoid platform's name alone does not establish a motion-tracking contribution."
+text = "The paper contributes reference-motion tracking, motion imitation, motion retargeting, motion transitions, or human-to-robot teleoperation for humanoid or bipedal control, including Unitree G1. Include mimic, mimicry, motion mimicking, and whole-body mimicking methods when the title or abstract establishes this humanoid or bipedal control contribution. Require this control connection in the supplied title or abstract. The keyword mimic alone, medical MIMIC datasets, object tracking, generic imitation learning on robot arms, and citations of humanoid tracking work are insufficient. A humanoid platform's name alone does not establish a motion-tracking contribution."
 weight = 1.0
 
 [[interests]]

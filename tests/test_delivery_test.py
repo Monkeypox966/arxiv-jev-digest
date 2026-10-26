@@ -32,11 +32,11 @@ def test_explicit_smtp_test_needs_no_models_and_preserves_paper_history(config, 
 
     def persist():
         with Store(config.state_dir) as store:
-            assert len(store.pending(key)) == 1
-        events.append("persist")
+            phase = store.db.execute("SELECT status FROM outbox WHERE status!='sent'").fetchone()[0]
+        events.append(phase)
 
     result = send_test(config, outbox_hook=persist, mailer_factory=lambda _: Mailer())
-    assert events == ["login", "persist", "send"]
+    assert events == ["login", "prepared", "pending", "send"]
     assert result["emails_sent"] == 1
     health = json.loads((Path(result["output_dir"]) / "health.json").read_text("utf-8"))
     assert health["status"] == "success"

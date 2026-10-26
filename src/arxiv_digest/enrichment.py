@@ -142,7 +142,14 @@ def abs_evidence(html: str) -> tuple[str, list[str]]:
 
 def html_evidence(html: str) -> tuple[str, list[str]]:
     soup = BeautifulSoup(html, "html.parser")
-    main = soup.select_one("article") or soup.select_one("main") or soup
+    # Project sites often use many small <article> cards inside one <main>.
+    # Reading only the first card can hide the actual paper title and affiliations.
+    main = (
+        soup.select_one(".ltx_document")
+        or soup.select_one("main")
+        or soup.select_one("article")
+        or soup
+    )
     for element in main.select(".ltx_bibliography, script, style, nav, footer"):
         element.decompose()
     return element_evidence(main)
@@ -214,7 +221,9 @@ def classify_details(
         else "unknown"
     )
     details.affiliation_status = (
-        "found"
+        "partial"
+        if completeness["institutions_found"] and paper.metadata_pdf_url in failures
+        else "found"
         if completeness["institutions_found"]
         else "unavailable"
         if failures
@@ -234,7 +243,7 @@ class Enricher:
         path = files("arxiv_digest").joinpath("data/verified_details.json")
         self.verified = json.loads(path.read_text(encoding="utf-8"))
 
-    def key(self, paper: Paper, *, policy="details-v6-paper-institutions") -> str:
+    def key(self, paper: Paper, *, policy="details-v7-all-institution-sources") -> str:
         return fingerprint(
             [
                 policy,
@@ -255,32 +264,22 @@ class Enricher:
 
     def cached_details(self, store: Store, paper: Paper, *, now: datetime) -> PaperDetails | None:
         key = self.key(paper)
-        for candidate in (key, self.key(paper, policy="details-v5-explicit-pdf-markers")):
-            value = store.cached("details", candidate)
-            if value is None:
-                continue
-            details = PaperDetails.model_validate(value)
-            if candidate != key and not details.verified_affiliations():
-                # Old extraction may have dropped names solely for lacking author mappings.
-                continue
-            if details.needs_refresh(paper):
-                value = store.cached(
-                    "details",
-                    candidate,
-                    max_age_hours=self.config.enrichment.incomplete_cache_hours,
-                    now=now,
-                )
-                if value is None:
-                    return None
-                details = PaperDetails.model_validate(value)
-            details = classify_details(
-                details, paper, details.failed_sources, checked=bool(details.sources)
+        value = store.cached("details", key)
+        if value is None:
+            return None
+        details = PaperDetails.model_validate(value)
+        details = classify_details(
+            details, paper, details.failed_sources, checked=bool(details.sources)
+        )
+        if (
+            details.needs_refresh(paper)
+            and store.cached(
+                "details", key, max_age_hours=self.config.enrichment.incomplete_cache_hours, now=now
             )
-            if candidate != key:
-                # Reuse source-backed institutions from old author-mapping caches.
-                store.cache("details", key, details.model_dump(), now=now)
-            return details
-        return None
+            is None
+        ):
+            return None
+        return details
 
     def fetch_html(self, url: str) -> tuple[str, str]:
         for _ in range(4):
@@ -449,7 +448,9 @@ class Enricher:
                     raise
                 failures.append(url)
                 LOG.warning("Metadata source unavailable for %s (%s)", paper.id, type(exc).__name__)
-        if not result.project_url or not result.verified_affiliations():
+        # A nonempty HTML affiliation list can still omit collaborating institutions.
+        # Always reconcile with the PDF, rather than treating one institution as complete.
+        if not curated or result.needs_refresh(paper):
             try:
                 text, urls = self.pdf_evidence(paper)
                 checked = True
@@ -464,11 +465,7 @@ class Enricher:
                     raise
                 failures.append(paper.metadata_pdf_url)
                 LOG.warning("PDF metadata unavailable for %s (%s)", paper.id, type(exc).__name__)
-        if (
-            self.config.enrichment.follow_project_page
-            and result.project_url
-            and not result.verified_affiliations()
-        ):
+        if self.config.enrichment.follow_project_page and result.project_url and not curated:
             try:
                 html, source = self.fetch_html(result.project_url)
                 checked = True

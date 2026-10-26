@@ -3,7 +3,7 @@
 [English](README.en.md) | 简体中文
 
 自动筛选新增 arXiv 论文，生成中文摘要并发送邮件。运行在 GitHub Actions，无需服务器。
-默认用 Jev 筛选、DeepSeek 生成摘要，追踪 cs.RO 机器人方向，每批最多 10 篇；按下面步骤改成自己的研究兴趣即可。
+默认从 [cs.RO 的 `/new` 页面](https://arxiv.org/list/cs.RO/new)获取当前公告，用 Jev 筛选、DeepSeek 生成摘要。邮件分为**新提交、跨分类、修订论文**三部分，三部分合计最多 **15 篇**，符合条件不足时少发，不凑数。
 
 邮件优先展示约 160–220 字的贡献摘要、简短作者与机构概览、论文和项目链接。评分依据、完整署名及核查过程保留在 JSON 报告，不占用邮件正文。
 
@@ -27,7 +27,7 @@
 | `arxiv.categories` | arXiv 分类，如 `["cs.RO"]` 或 `["cs.AI", "cs.LG"]` |
 | `[[interests]]` | 研究兴趣；替换示例中的兴趣，避免保留无关方向 |
 | `[[exclusions]]` | 要排除的主题；换方向时也应检查这些规则 |
-| `selection.top_k` | 每批最多推送数量，默认 10 |
+| `selection.top_k` | 三部分合计上限，默认 15；不降低筛选门槛凑数 |
 | `selection.min_score` | 相关性门槛，默认 0.60 |
 | `ranking` | 相关性通过后按机构偏好过滤、排序，默认权重 35%；详见[排序配置](docs/ranking.md) |
 | `deepseek.language` | 摘要语言，默认简体中文 |
@@ -78,13 +78,19 @@ weight = 1.0
 
 ## 第五步：确认每天自动运行
 
-主任务计划每天**北京时间 09:30 启动**，备用任务在 **09:47–17:47 每小时检查一次**。按收件人核对当天已确认的日报（含空日报），已发送则不抓取、不调用模型、不重复发信；手动 `send` 补发也计入，`delivery_test` 不计入。手动 `send` 本身仍可主动再次发送。
+主任务计划每天**北京时间 09:30 启动**，备用任务在 **09:47–23:47 每小时检查一次**。按收件人核对当天已确认的日报（含空日报），已发送则不抓取、不调用模型、不重复发信；手动 `send` 补发也计入，`delivery_test` 不计入。手动 `send` 本身仍可主动再次发送。
 
 修改时间时同步调整 [`daily.yml`](.github/workflows/daily.yml) 的主任务 cron、备用时间范围及 `--daily-after 09:30`。cron 使用 UTC；每日去重与最早发送时间按 `config.toml` 的 `timezone` 判断。
 
-**没有新增匹配论文时也发送空日报**（`email.send_empty = true`），邮件会说明本次无匹配论文。空日报本身不额外调用模型；如有新候选，仍需调用决策模型判断相关性。已发送论文不会重发，周末可能继续读取上一公告批次。设为 `false` 可关闭空日报。GitHub 定时任务可能延迟或漏触发，并非准点投递服务；超过 60 天无仓库活动也可能自动停用。[官方说明](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+需要独立于 GitHub cron 的补跑时，按[外部调度说明](docs/operations.md#独立外部调度)从自己的服务器调用 `daily` 模式。仓库文件本身不会自动创建外部定时器。
+
+默认机构权重 **35%**，S/A/B 分为 **100/80/60**，已核实机构的最低门槛为 **80 分**，因此 B 档会被过滤。未知机构独立按 `unknown_policy` / `unlisted_policy` 处理；[名单与配置](docs/ranking.md)。动作模仿方向也包含 `mimic`，仍要求与人形或双足控制相关。
+
+**没有新增匹配论文时也发送空日报**（`email.send_empty = true`），邮件会说明本次无匹配论文。空日报本身不额外调用模型；如有新候选，仍需调用决策模型判断相关性。新提交和跨分类按论文去重；修订论文按版本去重，已发 v1 后可推送 v2，同一 v2 不重复。周末可能继续读取上一公告批次。设为 `false` 可关闭空日报。GitHub 定时任务可能延迟或漏触发，并非准点投递服务；超过 60 天无仓库活动也可能自动停用。[官方说明](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 
 <br>
+
+日常入口固定为 `arxiv.source = "new"`。`/new` 不提供历史批次；漏跑多日后可按[恢复手册](docs/operations.md)显式使用 API 窗口恢复，不能保证完整重建历史跨分类及修订公告。修订区摘要依据当前版本摘要生成，不是逐版本改动对比。
 
 ## 可选：更换决策服务
 

@@ -123,7 +123,7 @@ def test_fallback_retries_only_missing_recipients_and_sends_empty_digest(config,
     assert result["emails_sent"] == result["skipped_recipients"] == 1
     assert result["selected_unique"] == result["usage"]["totals"]["attempts"] == 0
     assert [message["To"] for message in messages] == ["second@example.com"]
-    assert pending_sizes == [1]
+    assert pending_sizes == [0, 1]
     assert "0 篇" in messages[0]["Subject"]
     with Store(config.state_dir) as store:
         assert not store.pending()
@@ -157,11 +157,12 @@ def test_v2_state_adds_acknowledgement_timestamp_without_losing_history(config):
         delivery = acknowledge(store)
         store.db.execute("UPDATE outbox SET created=? WHERE id=?", (NOW.isoformat(), delivery))
         store.db.execute("ALTER TABLE outbox DROP COLUMN sent_at")
+        store.db.execute("PRAGMA user_version = 2")
         store.db.commit()
     for _ in range(2):
         with Store(config.state_dir) as store:
             assert store.delivered_today(recipient_key("reader@example.com"), now=NOW)
-            assert store.db.execute("PRAGMA user_version").fetchone()[0] == 2
+            assert store.db.execute("PRAGMA user_version").fetchone()[0] == 4
             assert not store.pending()
 
 

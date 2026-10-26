@@ -18,6 +18,15 @@ class Paper:
     announced: str = ""
     version: str = ""
     updated: str = ""
+    announcement_type: Literal["new", "cross", "replace"] = "new"
+
+    @property
+    def tracking_id(self) -> str:
+        if self.announcement_type != "replace":
+            return self.id
+        if not self.version:
+            raise ValueError("Replacement announcements require an explicit version")
+        return self.id + "@" + self.versioned_id.removeprefix(self.id)
 
     @property
     def versioned_id(self) -> str:
@@ -134,7 +143,11 @@ class PaperDetails(BaseModel):
 
     def needs_refresh(self, paper: Paper) -> bool:
         completeness = self.completeness(paper)
-        return not completeness["project_found"] or not completeness["institutions_found"]
+        return (
+            not completeness["project_found"]
+            or not completeness["institutions_found"]
+            or self.affiliation_status == "partial"
+        )
 
     @field_validator("project_url", "project_source")
     @classmethod
@@ -167,14 +180,40 @@ class InstitutionMatch(BaseModel):
     score: float = Field(ge=0, le=1)
 
 
+class InstitutionEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    source: str
+    quote: str = Field(min_length=20, max_length=600)
+
+    @field_validator("source")
+    @classmethod
+    def safe_source(cls, value):
+        return PaperDetails.safe_project_url(value)
+
+
+class InstitutionAssessment(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    institution: str
+    canonical_name: str = ""
+    score: float = Field(ge=0, le=1)
+    status: Literal["assessed", "neutral", "rule"] = "neutral"
+    confidence: float = Field(default=0, ge=0, le=1)
+    reason: str = Field(default="", max_length=1600)
+    sources: list[str] = Field(default_factory=list)
+    evidence: list[InstitutionEvidence] = Field(default_factory=list, max_length=8)
+    assessed_on: str = ""
+    deferred: bool = False
+
+
 class Ranking(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     relevance_score: float = Field(ge=0, le=1)
     institution_score: float = Field(ge=0, le=1)
     institution_weight: float = Field(ge=0, le=0.5)
     score: float = Field(ge=0, le=1)
-    status: Literal["matched", "unlisted", "unknown"]
+    status: Literal["matched", "assessed", "unlisted", "unknown"]
     matches: list[InstitutionMatch] = Field(default_factory=list)
+    assessments: list[InstitutionAssessment] = Field(default_factory=list)
 
 
 @dataclass(frozen=True)
