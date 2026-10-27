@@ -2,6 +2,8 @@
 
 密钥通过环境变量或 GitHub Secrets 提供。不要将 `.env`、授权码或完整服务响应放进 Issue、PR、日志或运行报告。
 
+独立服务器调度仅需目标仓库的 GitHub Actions 写权限及 Contents 读权限，配置保存在 root 可读的 `/etc/arxiv-digest-scheduler.env`；模型和 SMTP Secret 不复制到服务器。公开的 `delivery-status.json` 仅包含日期、时区及聚合发送人数和状态。
+
 发现安全问题时，请使用仓库 **Security → Report a vulnerability** 私密报告（维护者需启用 Private vulnerability reporting）。若入口不可用，可先开不含利用细节和秘密信息的 Issue，请维护者提供私密报告渠道。
 
 如果密钥泄露，立即到服务商撤销并重建；从代码删除不能让旧密钥失效。
