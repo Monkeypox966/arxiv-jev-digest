@@ -59,6 +59,19 @@ def test_report_escapes_untrusted_model_and_paper_text(config, paper, summary):
     assert paper.url in text
 
 
+def test_report_preserves_full_translated_abstract(config, paper, summary):
+    summary.tldr = "原始摘要的完整译文。" * 180 + "\n\n结尾保留实验结果 42%。"
+    pick = Pick(
+        paper,
+        Decision(score=0.9, interests={}, exclusions={}, excluded=False, model="test"),
+        summary,
+    )
+    _, text, html = render(config, [pick], datetime.now(UTC), {"fetched": 1})
+    assert summary.tldr in text and summary.tldr in html
+    assert "white-space:pre-line" in html
+    assert "原始摘要的完整译文" in text and "原始摘要的完整译文" in html
+
+
 def test_state_persists_and_sent_history_survives_profile_change(tmp_path):
     with Store(tmp_path) as store:
         store.cache("decision", "key", {"score": 0.9})

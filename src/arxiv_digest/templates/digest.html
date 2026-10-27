@@ -25,7 +25,7 @@
           <div style="font-size:12px;color:#688577;">{{ '%02d'|format(counter.value) }} &nbsp; / &nbsp; {{ pick.paper.categories|join(' · ') }}{% if pick.paper.version %} &nbsp; · &nbsp; {{ pick.paper.version }}{% endif %}</div>
           <h2 style="font-size:21px;line-height:1.5;margin:8px 0 6px;color:#173e34;">{{ pick.summary.title_zh }}</h2>
           <div style="font-size:13px;line-height:1.6;color:#63756a;">{{ pick.paper.title }}</div>
-          <p style="font-size:15px;line-height:1.85;margin:14px 0 16px;color:#243832;">{{ pick.summary.tldr }}</p>
+          <p style="font-size:15px;line-height:1.85;margin:14px 0 16px;color:#243832;white-space:pre-line;">{{ pick.summary.tldr }}</p>
           {% if not compact %}
           <p style="font-size:14px;margin:10px 0;"><strong style="color:#244c3b;">研究问题</strong><br>{{ pick.summary.problem }}</p>
           <p style="font-size:14px;margin:10px 0;"><strong style="color:#244c3b;">核心方法</strong><br>{{ pick.summary.method }}</p>
@@ -52,7 +52,7 @@
         {% endfor %}
         {% if not picks %}<tr><td style="padding:20px;background:#fff;">本次没有达到筛选阈值的新论文。</td></tr>{% endif %}
         <tr><td style="padding:16px 20px;background:#e7eee9;border-radius:0 0 12px 12px;font-size:12px;color:#63776b;">
-          AI 摘要仅依据论文标题与原始摘要生成，请以论文原文为准。<br>
+          标题与摘要由 AI 翻译，摘要为原始摘要的完整译文，请以论文原文为准。<br>
           生成于 {{ date }} {{ generated }} · {{ timezone }}
         </td></tr>
       </table>

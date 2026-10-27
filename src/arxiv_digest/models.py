@@ -74,7 +74,7 @@ class Decision(BaseModel):
 class Summary(BaseModel):
     model_config = ConfigDict(extra="forbid")
     title_zh: str = Field(min_length=1, max_length=500)
-    tldr: str = Field(min_length=1, max_length=1200)
+    tldr: str = Field(min_length=1)  # Complete abstract translation; no editorial length cap.
     problem: str = Field(min_length=1, max_length=1800)
     method: str = Field(min_length=1, max_length=1800)
     results: str = Field(min_length=1, max_length=1800)

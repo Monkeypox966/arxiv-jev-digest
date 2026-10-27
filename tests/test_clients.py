@@ -121,8 +121,11 @@ def test_summary_fatal_auth_does_not_retry(config, paper):
     assert len(calls) == 1
 
 
-def test_summary_cache_invalidates_on_language_or_content(config, paper):
+def test_summary_cache_invalidates_on_language_or_content(config, paper, monkeypatch):
     key = summary_key(config, paper)
+    with monkeypatch.context() as previous:
+        previous.setattr("arxiv_digest.clients.SUMMARY_PROMPT_VERSION", 4)
+        assert summary_key(config, paper) != key
     config.deepseek.language = "English"
     assert summary_key(config, paper) != key
 
@@ -199,7 +202,7 @@ def test_summary_failure_is_bounded_and_diagnostics_do_not_leak_model_values(
     assert secret not in json.dumps(calls)
 
 
-def test_truncated_even_parseable_summary_is_regenerated_with_compactness_guidance(
+def test_truncated_even_parseable_translation_is_regenerated_without_abridging(
     config, paper, summary
 ):
     calls = []
@@ -222,4 +225,32 @@ def test_truncated_even_parseable_summary_is_regenerated_with_compactness_guidan
         assert DeepSeekClient(config, client).summarize(paper) == summary
     assert len(calls) == 2
     assert "unfinished_completion" in calls[1]["messages"][0]["content"]
-    assert "compact enough" in calls[1]["messages"][0]["content"]
+    assert "never shorten or omit source content" in calls[1]["messages"][0]["content"]
+    assert "compact enough" not in calls[1]["messages"][0]["content"]
+
+
+def test_full_translation_exceeds_old_character_cap_without_truncation(config, paper, summary):
+    translation = (
+        "完整翻译原文中的研究内容、实验数据与限定条件。" * 80
+    ) + "\n\n最后一句保留 https://example.org 和 42%。"
+    value = {**summary.model_dump(), "tldr": translation}
+    calls = []
+
+    def handler(request):
+        calls.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"finish_reason": "stop", "message": {"content": json.dumps(value)}}]
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result = DeepSeekClient(config, client).summarize(paper)
+    assert len(translation) > 1200
+    assert result.tldr == translation
+    assert json.loads(calls[0]["messages"][1]["content"]) == {
+        "title": paper.title,
+        "abstract": paper.abstract,
+    }
+    assert "160-220" not in calls[0]["messages"][0]["content"]

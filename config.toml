@@ -2,7 +2,7 @@
 timezone = "Asia/Shanghai"
 state_dir = ".state"
 output_dir = "output"
-compact_summaries = true
+compact_summaries = true # Show the full abstract translation; hide auxiliary analysis fields.
 
 [arxiv]
 # Category filter only: all fetched papers go through Jev; no keyword prefilter.

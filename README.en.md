@@ -5,7 +5,7 @@ English | [简体中文](README.md)
 Screen new arXiv papers, generate summaries and deliver them by email. Runs on GitHub Actions without a server.
 The default setup discovers papers from [cs.RO `/new`](https://arxiv.org/list/cs.RO/new), screens them with Jev and generates Chinese summaries with DeepSeek. Emails have three sections: **new submissions, cross-lists and replacements**, with **up to 15 papers total**. Fewer qualifying papers means a shorter digest; thresholds are never lowered to fill the quota.
 
-Emails prioritize contribution summaries, brief author/institution overviews and paper/project links. Ranking uses the paper's sourced institution list without individual author mappings. Full institution lists and source evidence remain in JSON reports.
+Emails show faithful, complete translations of the original abstracts, without abridgment or a target word count, plus brief author/institution overviews and paper/project links. Ranking uses the paper's sourced institution list without individual author mappings. Full institution lists and source evidence remain in JSON reports.
 
 <br>
 
@@ -28,7 +28,7 @@ Edit the existing fields in [`config.toml`](config.toml):
 | `selection.top_k` | Total limit across all three sections; default: 15, with no minimum quota |
 | `selection.min_score` | Relevance threshold; default: 0.60 |
 | `ranking` | Institution ranking after relevance screening (40%); verified new institutions and aliases are learned persistently; see [configuration](docs/ranking.md) |
-| `deepseek.language` | Summary language; change `"简体中文"` to `"English"` for English summaries |
+| `deepseek.language` | Translation language; use `"English"` to retain English abstracts in their original language |
 | `email` | SMTP host, port, security mode and subject prefix |
 
 Write each interest as a clear statement that can be judged from a title and abstract. For example, replace an existing interest with:

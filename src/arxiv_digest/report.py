@@ -119,7 +119,7 @@ def render(config: Config, picks: list[Pick], now: datetime, stats: dict, *, dem
         lines.append("")
     if not picks:
         lines.append("本次没有达到筛选阈值的新论文。")
-    lines += ["", "AI 摘要仅依据论文标题与原始摘要生成，请以论文原文为准。"]
+    lines += ["", "标题与摘要由 AI 翻译，摘要为原始摘要的完整译文，请以论文原文为准。"]
     return subject, "\n".join(lines), html
 
 
@@ -136,6 +136,7 @@ def write_report(
         "generated_at": now.isoformat(),
         "demo": demo,
         "summary_basis": "title_and_abstract_only",
+        "summary_style": "abstract_translation",
         "stats": stats,
         "papers": [pick.to_dict() for pick in picks],
         "sections": [
