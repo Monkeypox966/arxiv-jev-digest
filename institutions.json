@@ -83,6 +83,29 @@
       ]
     },
     {
+      "institution": "Robotics and Artificial Intelligence Lab, Korea Advanced Institute of Science & Technology (KAIST)",
+      "canonical_name": "KAIST",
+      "score": 1.0,
+      "status": "rule",
+      "confidence": 1.0,
+      "reason": "机构登记归一化后命中人工偏好名单。",
+      "sources": [
+        "https://ror.org/05apxxy63"
+      ],
+      "identity_sources": [
+        "https://ror.org/05apxxy63"
+      ],
+      "identity_evidence": [],
+      "evidence": [],
+      "assessed_on": "2026-10-27T15:46:31.888834+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "kaist",
+        "robotics and artificial intelligence lab, korea advanced institute of science & technology (kaist)"
+      ]
+    },
+    {
       "institution": "MPI-IS",
       "canonical_name": "Max Planck Institute for Intelligent Systems",
       "score": 0.8,
