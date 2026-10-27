@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
+import re
 import time
 
 import httpx
@@ -14,6 +16,33 @@ from .models import Decision, Paper, Summary
 from .usage import UsageTracker, input_reservation
 
 SUMMARY_PROMPT_VERSION = 4
+LOG = logging.getLogger(__name__)
+
+
+def output_problem(error: Exception, finish_reason: str | None) -> dict:
+    """Safe diagnostics: never include response values, validation inputs or credentials."""
+    if finish_reason is not None and finish_reason != "stop":
+        reason = (
+            finish_reason
+            if isinstance(finish_reason, str)
+            and finish_reason
+            in {"length", "content_filter", "insufficient_system_resource", "aborted"}
+            else "unknown"
+        )
+        return {"kind": "unfinished_completion", "finish_reason": reason}
+    if isinstance(error, ValidationError):
+        fields = set(Summary.model_fields)
+        issues = []
+        for item in error.errors(include_input=False, include_context=False, include_url=False)[:8]:
+            location = item.get("loc", ())
+            issues.append(
+                {
+                    "type": item["type"],
+                    "field": location[0] if location and location[0] in fields else "response",
+                }
+            )
+        return {"kind": "schema_validation", "issues": issues}
+    return {"kind": "malformed_response", "error_type": type(error).__name__}
 
 
 def usage_callbacks(
@@ -221,9 +250,12 @@ class DeepSeekClient:
             {"title": paper.title, "abstract": paper.abstract},
             Summary.model_validate_json,
             purpose="summary",
+            document_id=paper.versioned_id,
         )
 
-    def complete_json(self, system: str, context: dict, parser, *, purpose="metadata"):
+    def complete_json(
+        self, system: str, context: dict, parser, *, purpose="metadata", document_id: str = ""
+    ):
         settings = self.config.deepseek
         body = {
             "model": settings.model,
@@ -259,13 +291,60 @@ class DeepSeekClient:
                     raise
                 time.sleep(exc.delay if exc.delay is not None else retry_delay(None, attempt))
                 continue
+            finish_reason = None
             try:
                 choice = response.json()["choices"][0]
-                if choice.get("finish_reason") != "stop":
+                finish_reason = choice.get("finish_reason")
+                if finish_reason != "stop":
                     raise ValueError("truncated or incomplete completion")
                 return parser(choice["message"]["content"])
-            except (KeyError, IndexError, TypeError, AttributeError, ValueError, ValidationError):
+            except (
+                KeyError,
+                IndexError,
+                TypeError,
+                AttributeError,
+                ValueError,
+                ValidationError,
+            ) as exc:
+                problem = output_problem(exc, finish_reason)
+                # Only a stable identifier and schema error codes are logged, never model text.
+                label = (
+                    document_id
+                    if re.fullmatch(
+                        r"(?:\d{4}\.\d{4,5}|[a-z-]+(?:\.[A-Z]{2})?/\d{7})(?:v[1-9]\d*)?",
+                        document_id,
+                    )
+                    else fingerprint(document_id)[:12]
+                    if document_id
+                    else "unspecified"
+                )
+                LOG.warning(
+                    "DeepSeek output rejected: purpose=%s document=%s attempt=%d/%d problem=%s",
+                    purpose,
+                    label,
+                    attempt + 1,
+                    settings.attempts,
+                    json.dumps(problem),
+                )
                 if attempt + 1 == settings.attempts:
-                    raise ServiceError("DeepSeek: invalid or incomplete JSON response") from None
+                    raise ServiceError(
+                        "DeepSeek: invalid or incomplete JSON response "
+                        f"(purpose={purpose}, document={label}, reason={problem['kind']})"
+                    ) from None
+                if purpose == "summary":
+                    correction = (
+                        "\nYour previous response failed validation. Regenerate the complete "
+                        "JSON object using only the original title and abstract. "
+                        "Do not change facts to satisfy formatting. All six fields are required "
+                        "and must be nonempty strings, never arrays, objects or null. "
+                        "For information absent from the abstract, state that it is not reported. "
+                        "Return JSON only, with no Markdown fences or extra fields. Keep it "
+                        "compact enough to finish within the output token limit. "
+                        "Validation diagnostics: "
+                        + json.dumps(problem)
+                        + "\nRequired JSON schema: "
+                        + json.dumps(Summary.model_json_schema())
+                    )
+                    body["messages"][0] = {"role": "system", "content": system + correction}
                 time.sleep(retry_delay(None, attempt))
         raise AssertionError("unreachable")

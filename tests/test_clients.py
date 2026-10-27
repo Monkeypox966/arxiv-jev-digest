@@ -62,7 +62,9 @@ def test_jev_retry_policy(config, paper, status, expected_calls):
     assert "must not appear" not in str(error.value)
 
 
-@pytest.mark.parametrize("first", ["invalid_json", "empty", "truncated", "503"])
+@pytest.mark.parametrize(
+    "first", ["invalid_json", "empty", "truncated", "503", "malformed_finish_reason"]
+)
 def test_summary_retries_incomplete_or_transient(config, paper, summary, first):
     calls = []
 
@@ -73,6 +75,8 @@ def test_summary_retries_incomplete_or_transient(config, paper, summary, first):
                 return httpx.Response(503)
             content = "" if first == "empty" else "not-json"
             reason = "length" if first == "truncated" else "stop"
+            if first == "malformed_finish_reason":
+                reason = {"unexpected": "format"}
             return httpx.Response(
                 200,
                 json={
@@ -121,3 +125,101 @@ def test_summary_cache_invalidates_on_language_or_content(config, paper):
     key = summary_key(config, paper)
     config.deepseek.language = "English"
     assert summary_key(config, paper) != key
+
+
+@pytest.mark.parametrize(
+    "change,field,error_type",
+    [
+        ({"method": ["step one"]}, "method", "string_type"),
+        ({"limitations": None}, "limitations", "string_type"),
+        ({"tldr": " "}, "tldr", "string_too_short"),
+    ],
+)
+def test_summary_retry_explains_schema_failure_without_changing_source(
+    config, paper, summary, change, field, error_type
+):
+    calls = []
+
+    def handler(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        value = summary.model_dump()
+        if len(calls) == 1:
+            value.update(change)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "finish_reason": "stop",
+                        "message": {"content": json.dumps(value)},
+                    }
+                ]
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        assert DeepSeekClient(config, client).summarize(paper) == summary
+    assert len(calls) == 2
+    correction = calls[1]["messages"][0]["content"]
+    assert error_type in correction and field in correction
+    assert "Required JSON schema" in correction
+    assert calls[1]["messages"][1] == calls[0]["messages"][1]
+    assert calls[1]["max_tokens"] == calls[0]["max_tokens"] == config.deepseek.max_tokens
+
+
+def test_summary_failure_is_bounded_and_diagnostics_do_not_leak_model_values(
+    config, paper, summary, caplog
+):
+    calls = []
+    secret = "untrusted-response-value-must-not-be-logged"
+    bad = {**summary.model_dump(), secret: secret, "method": [secret]}
+
+    def handler(request):
+        calls.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "finish_reason": "stop",
+                        "message": {"content": json.dumps(bad)},
+                    }
+                ]
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ServiceError, match="schema_validation") as error:
+            DeepSeekClient(config, client).summarize(paper)
+    assert len(calls) == config.deepseek.attempts
+    assert paper.id in str(error.value) and paper.id in caplog.text
+    assert "string_type" in caplog.text and "method" in caplog.text
+    assert secret not in caplog.text and secret not in str(error.value)
+    assert secret not in json.dumps(calls)
+
+
+def test_truncated_even_parseable_summary_is_regenerated_with_compactness_guidance(
+    config, paper, summary
+):
+    calls = []
+
+    def handler(request):
+        calls.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "finish_reason": "length" if len(calls) == 1 else "stop",
+                        "message": {"content": summary.model_dump_json()},
+                    }
+                ]
+            },
+        )
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        assert DeepSeekClient(config, client).summarize(paper) == summary
+    assert len(calls) == 2
+    assert "unfinished_completion" in calls[1]["messages"][0]["content"]
+    assert "compact enough" in calls[1]["messages"][0]["content"]
