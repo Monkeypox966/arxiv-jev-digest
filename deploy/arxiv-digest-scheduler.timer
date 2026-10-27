@@ -1,0 +1,13 @@
+[Unit]
+Description=Check arXiv Digest every 10 minutes during Beijing daytime
+
+[Timer]
+# 01:30 UTC = 09:30 Beijing. The script skips the 09:00/09:10/09:20 checks.
+OnCalendar=*-*-* 01..15:00/10:00 UTC
+AccuracySec=1s
+RandomizedDelaySec=0
+Persistent=yes
+Unit=arxiv-digest-scheduler.service
+
+[Install]
+WantedBy=timers.target

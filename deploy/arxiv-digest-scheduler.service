@@ -1,0 +1,20 @@
+[Unit]
+Description=Independent trigger and delivery check for arXiv Digest
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+EnvironmentFile=/etc/arxiv-digest-scheduler.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 /opt/arxiv-digest-scheduler/scheduler.py
+StateDirectory=arxiv-digest-scheduler
+StateDirectoryMode=0700
+TimeoutStartSec=120
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=128M

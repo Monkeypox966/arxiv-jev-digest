@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import subprocess
 
 import pytest
@@ -59,6 +60,8 @@ def test_real_git_state_roundtrip_without_credentials_on_disk(tmp_path, monkeypa
                 assert store.learned_institution("research-scope", "eri")[0].score == 0.8
                 assert (workspace / ".state/institutions.json").is_file()
         state_module.main(["save"])
+        snapshot = json.loads((workspace / ".state/delivery-status.json").read_text("utf-8"))
+        assert not snapshot["delivered"]
         state_module.main(["save"])  # An unchanged database is a successful no-op.
         disk_config = (workspace / ".state/.git/config").read_text(encoding="utf-8")
         assert "fake-test-token" not in disk_config

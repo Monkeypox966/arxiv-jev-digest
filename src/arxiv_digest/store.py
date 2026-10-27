@@ -416,6 +416,21 @@ class Store:
             for row in rows
         )
 
+    def delivery_status(self, targets: list[str], *, now: datetime) -> dict:
+        """Public aggregate receipt for an independent scheduler; no email addresses."""
+        targets = set(targets)
+        acknowledged = sum(self.delivered_today(target, now=now) for target in targets)
+        pending = sum(item["recipient_hash"] in targets for item in self.pending())
+        return {
+            "schema_version": 1,
+            "date": now.date().isoformat(),
+            "timezone": str(now.tzinfo),
+            "recipient_count": len(targets),
+            "acknowledged_count": acknowledged,
+            "pending_count": pending,
+            "delivered": bool(targets) and acknowledged == len(targets) and pending == 0,
+        }
+
     def prepare(
         self,
         recipient: str,

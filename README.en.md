@@ -80,7 +80,7 @@ The primary run is scheduled for **09:30 Beijing time (01:30 UTC)**, with hourly
 
 To change the target time, update the primary cron, fallback window and `--daily-after 09:30` in [`daily.yml`](.github/workflows/daily.yml). Cron uses UTC; the daily guard uses `timezone` from `config.toml`.
 
-For a fallback independent of GitHub cron, use your own scheduler to invoke `daily` mode as described in the [operations guide](docs/operations.md#独立外部调度). Repository files alone do not create an external scheduler.
+To cover missed GitHub cron events, install the [independent Linux scheduler](deploy/README.md). It starts at 09:30 Beijing time and checks persisted SMTP receipts every 10 minutes, retrying unfinished deliveries. No model or SMTP credentials are needed on the server. Repository files alone do not install the timer.
 
 Institutions contribute **40%** of the ranking. S/A/B tiers score **100/80/60**, with a minimum of **80** for verified institutions, excluding B-tier papers. Unknown institutions use separate `unknown_policy` / `unlisted_policy` settings. See the [list and configuration](docs/ranking.md). Motion imitation also includes `mimic`, requiring a humanoid or bipedal control contribution.
 

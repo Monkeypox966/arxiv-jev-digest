@@ -1,4 +1,5 @@
 name: Daily arXiv Digest
+run-name: ${{ inputs.scheduler_id && format('Daily arXiv Digest · {0}', inputs.scheduler_id) || 'Daily arXiv Digest' }}
 
 on:
   schedule:
@@ -14,6 +15,10 @@ on:
         type: choice
         options: [preview, daily, send, inspect, institutions, delivery_test, recover_preview, recover_send, reset_checkpoints, resolve_sent, resolve_retry]
         default: preview
+      scheduler_id:
+        description: Optional external scheduler correlation ID; does not change delivery mode.
+        type: string
+        required: false
       delivery_id:
         description: Only for resolve modes; check the recipient inbox first.
         type: string
@@ -110,6 +115,7 @@ jobs:
         if: ${{ always() && steps.restore.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: uv run --locked --no-dev python .github/scripts/state.py save
       - name: Upload reports and recovery database
         if: ${{ always() }}
@@ -120,6 +126,7 @@ jobs:
             output/
             .state/digest.sqlite3
             .state/institutions.json
+            .state/delivery-status.json
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14

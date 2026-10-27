@@ -8,11 +8,18 @@ from __future__ import annotations
 
 import argparse
 import base64
+import json
 import os
+import re
 import subprocess
 import tomllib
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo
+
+from arxiv_digest.config import email_address
+from arxiv_digest.store import Store, recipient_key
 
 
 def git(*args, cwd: Path, env: dict, accepted=(0,)):
@@ -71,6 +78,20 @@ def main(argv=None):
         else:
             print("First run: a state branch will be created after processing.")
     else:
+        override = os.environ.get("EMAIL_TO", "").strip()
+        addresses = (
+            re.split(r"[,;]", override)
+            if override
+            else config.get("email", {}).get("recipients", [])
+        )
+        targets = [recipient_key(email_address(value)) for value in addresses if value.strip()]
+        with Store(directory) as store:
+            snapshot = store.delivery_status(
+                targets, now=datetime.now(ZoneInfo(config.get("timezone", "Asia/Shanghai")))
+            )
+        (directory / "delivery-status.json").write_text(
+            json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
         git("config", "user.name", "github-actions[bot]", cwd=directory, env=env)
         git(
             "config",
@@ -80,6 +101,7 @@ def main(argv=None):
             env=env,
         )
         git("add", "--", "digest.sqlite3", cwd=directory, env=env)
+        git("add", "--", "delivery-status.json", cwd=directory, env=env)
         if (directory / "institutions.json").is_file():
             git("add", "--", "institutions.json", cwd=directory, env=env)
         changed = git("diff", "--cached", "--quiet", cwd=directory, env=env, accepted=(0, 1))
