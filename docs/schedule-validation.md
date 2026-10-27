@@ -39,3 +39,39 @@
 上述线上守卫通过手动 daily 模式执行，与自动任务共用命令和生产状态。新增备用 cron 的未来自动触发尚未实际观察，不能把上述测试解释为已经验证 GitHub 会准点触发。
 
 SMTP 成功表示发件服务器接受，并非独立核验最终收件箱。备用任务仍依赖 GitHub，不能保证准点；严格准点需要独立调度来源。依据：[GitHub schedule 文档](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)、[故障排查文档](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows)。
+
+## 2026-10-27：独立调度实际部署与验证
+
+10-27 北京时间 09:54 再次检查时，仓库工作流 active、默认分支 main，但 GitHub 未创建当日 09:30 或 09:47 的运行。最近一条 schedule 于 04:11 执行，因早于 09:30 正确跳过。这是触发阶段缺失/延迟，不能通过 SMTP 或筛选逻辑解释；GitHub 未公开具体内部原因。
+
+此前添加的每小时备用 cron 与主任务依赖同一平台，因此不足以覆盖这次故障。手动发送和每日守卫通过，也不能据此宣称未来定时触发已验证。
+
+### 当天补发与实际收件
+
+[09:55 补发](https://github.com/Monkeypox966/arxiv-jev-digest/actions/runs/40435375256)：09:55:31 QQ SMTP 接受 1 封日报；随后在 QQ 收件箱实际看到了标题为 `cs.RO 人形机器人日报 · 2026-10-27 · 0 篇` 的邮件。107 篇候选来自仍为 10-26 的公告批次，已处理记录保留，故本次没有新的入选论文；没有为补发重复调用模型。
+
+### 已部署的独立服务器
+
+在用户指定的持续在线 Linux 服务器安装并启用了 `arxiv-digest-scheduler.timer`，使用仓库 [deploy/](../deploy/README.md) 中的代码和 systemd 单元。服务器 Python 3.13，时钟同步状态为 yes。调度独立于本机电脑、Codex 和 GitHub cron。
+
+- 每日北京时间 09:30 开始，此后每 10 分钟检查一次，至 23:50。
+- 从 `digest-state/delivery-status.json` 读取与 outbox 同源的聚合 SMTP 确认记录，不以工作流绿色状态代替发送成功。
+- 当天全部收件人确认后停止补跑；部分完成、响应丢失、运行索引延迟和 pending 分别处理。
+- 服务器仅保存 GitHub 调用凭据，不保存模型或 SMTP Secret。启用开机恢复及 missed-timer 补查。
+
+### 真实时钟测试
+
+| 验证 | 结果 |
+| --- | --- |
+| 回执初始化 | [10:10 工作流](https://github.com/Monkeypox966/arxiv-jev-digest/actions/runs/40436926941)识别今天已完成，导出正常日报人数 1、已确认 1、pending 0 |
+| 独立时钟自动提交 | systemd 单次测试定时器于 10:12:35 自动执行，同一生产脚本使用 `--force-dispatch` 测试入口；10:12:37 创建 [GitHub 运行](https://github.com/Monkeypox966/arxiv-jev-digest/actions/runs/40437096870)，关联 ID 为 `vps-20261027T101235-65d218e4` |
+| 不重复发信 | 上述真实工作流使用 `daily` 模式，识别已发送；新增模型调用、输入输出 tokens、邮件均为 0 |
+| 正式服务自动核查 | 为正式 timer 临时添加 20 秒测试时刻；10:16:05 由时钟触发正式服务，读取当天完整回执，状态 delivered、退出码 0，没有再创建工作流 |
+| 恢复正式时间表 | 清除临时测试时刻、测试单元及其状态文件；正式 timer 保持 enabled / active，服务 ExecStart 不含测试参数，DropInPaths 为空 |
+| 明日时间解析 | systemd 日历以 10-28 01:29:59 UTC 为基准，下一次为 01:30 UTC，即北京时间 09:30 |
+
+上述测试实际验证了服务器时钟 → GitHub workflow_dispatch → 同一每日守卫 → 持久化 SMTP 回执链路。10-28 的早晨尚未到来，不能把当前验证写成已观察到次日准点投递。GitHub API、runner、服务器网络和邮箱服务仍是独立故障来源；调度器会按回执按需重查，结果不确定的发送仍需人工核实。
+
+### 回归
+
+本地完整 437 项测试通过。[部署代码 CI](https://github.com/Monkeypox966/arxiv-jev-digest/actions/runs/40436926138)的 Linux / Windows × Python 3.11 / 3.13 四组全部通过，含格式、静态检查、配置和离线演示。新增测试覆盖真实 SMTP 确认口径、空日报、测试邮件排除、部分成功、日期过期、pending、任务占用、HTTP 响应丢失、关联 ID 及工作流绿色但没有回执的情况。

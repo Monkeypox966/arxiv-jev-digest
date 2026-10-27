@@ -37,7 +37,7 @@ outbox 增加兼容的 `sent_at` 可选列，与 sent 状态在同一事务中�
 
 自动任务正在发送时出现 pending 是正常的前置保护，外部调度先等待正在运行的任务；任务结束后仍有 pending 才停止自动重试并报错。服务器仅需 GitHub 的 Actions 写权限和 Contents 读权限；模型及 SMTP Secret 不复制到服务器。
 
-同一 GitHub 平台内增加 cron 无法解决平台根本不创建运行的问题。可在自己持续在线的服务器上配置独立定时器，安装并登录 GitHub CLI，授权对目标仓库运行 Actions，每天北京时间 09:40 起按小时执行：
+同一 GitHub 平台内增加 cron 无法解决平台根本不创建运行的问题。上述安装器会创建并启用真正的独立定时器；只提交仓库文件不会在服务器上自动安装。若需手动排查，同一入口也可通过已授权的 GitHub CLI 调用：
 
 ```sh
 gh workflow run daily.yml --repo OWNER/REPO --ref main -f mode=daily
@@ -45,7 +45,7 @@ gh workflow run daily.yml --repo OWNER/REPO --ref main -f mode=daily
 
 替换 `OWNER/REPO`，默认分支不是 main 时也修改 `--ref`。外部使用的令牌只需执行 Actions 的适当权限，不需要模型或 SMTP 凭据。调用本身只创建工作流；服务器仍需检查命令退出码及后续运行结果，在失败时独立告警。可用 `gh run list --repo OWNER/REPO --workflow daily.yml --limit 5` 查看运行记录。
 
-外部调用与仓库定时任务使用同一并发锁、每日去重和发送前保护；已发送时不会额外调用模型或再次发日报。独立定时器需要由部署者实际启用，这段配置不会自动创建定时器。它能绕过 GitHub cron 漏触发，仍无法保证 GitHub Actions 整个平台或邮件服务故障时准点送达。
+外部调用与仓库定时任务使用同一并发锁、每日去重和发送前保护；已发送时不会额外调用模型或再次发日报。它能绕过 GitHub cron 漏触发，仍无法保证 GitHub Actions 整个平台或邮件服务故障时准点送达。
 
 ## 状态写入失败后的恢复
 
