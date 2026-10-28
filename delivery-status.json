@@ -3,7 +3,7 @@
   "date": "2026-10-28",
   "timezone": "Asia/Shanghai",
   "recipient_count": 1,
-  "acknowledged_count": 0,
-  "pending_count": 1,
-  "delivered": false
+  "acknowledged_count": 1,
+  "pending_count": 0,
+  "delivered": true
 }
