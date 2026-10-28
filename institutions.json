@@ -2,6 +2,89 @@
   "schema_version": 1,
   "institutions": [
     {
+      "institution": "DEVCOM Army Research Laboratory, MD, USA",
+      "canonical_name": "DEVCOM Army Research Laboratory",
+      "score": 1.0,
+      "status": "assessed",
+      "confidence": 0.85,
+      "reason": "Two distinct ARL pages document sustained, concrete robotics/autonomy research infrastructure and programs: the Robotics Research Collaboration Campus (R2C2) with named research thrusts (AIMM, ArtIAMAS, HAT, VICTOR) and experimentation domains, plus the main page noting autonomy innovation advancements. This evidences substantial sustained achievement in cs.RO.",
+      "sources": [
+        "https://arl.devcom.army.mil/r2c2/",
+        "https://arl.devcom.army.mil/r2c2/r2c2-research/",
+        "https://arl.devcom.army.mil"
+      ],
+      "identity_sources": [
+        "https://ror.org/011hc8f90"
+      ],
+      "identity_evidence": [],
+      "evidence": [
+        {
+          "source": "https://arl.devcom.army.mil/r2c2/",
+          "quote": "The Robotics Research Collaboration Campus is a DEVCOM Army Research Laboratory facility where public, private, and academic organizations work side-by-side to create the next breakthrough in robotics and autonomous systems research."
+        },
+        {
+          "source": "https://arl.devcom.army.mil/r2c2/r2c2-research/",
+          "quote": "Specific topics of interest are: Improving ground robot mobility and maneuverability Accelerating AI decision-making Increasing network security Enhancing human-machine collaboration Boosting power and propulsion while reducing payload"
+        },
+        {
+          "source": "https://arl.devcom.army.mil/r2c2/r2c2-research/",
+          "quote": "Current Research ArtIAMAS | AI and Autonomy for Multi-Agent Systems Artificial Intelligence for Maneuver & Mobility (AIMM) Versatile Tactical Power & Propulsion (VICTOR) Emerging Overmatch Technologies (EOT) Human Autonomy Teaming (HAT)"
+        },
+        {
+          "source": "https://arl.devcom.army.mil",
+          "quote": "Army scientists reveal integration, communication advancements in autonomy innovations for the future Soldier"
+        }
+      ],
+      "assessed_on": "2026-10-28T12:56:07.009193+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "devcom army research laboratory",
+        "devcom army research laboratory, md, usa"
+      ]
+    },
+    {
+      "institution": "hessian.AI",
+      "canonical_name": "Hessian Center for Artificial Intelligence",
+      "score": 0.8,
+      "status": "assessed",
+      "confidence": 0.8,
+      "reason": "hessian.AI documents substantial robotics-relevant research strength in its cs.RO category: its research page lists Robotics among its expertise areas and cites multiple ERC grants directly on embodied/robotic intelligence, including Chalvatzaki's SIREN (Structured Interactive Perception and Learning for Holistic Robotic Embodied Intelligence), Jan Peters' SKILLS4ROBOTS (Policy Learning of Motor Skills for Humanoid Robots), and the EIC Transition Grant VRP (Visuelle Roboterprogrammierung), plus 620+ publications and 170,000+ citations. These are concrete, evidenced achievements rather than marketing claims, though the evidence is concentrated on a single page and does not establish exceptional sustained two-page documentation, so 0.8 rather than 1.0.",
+      "sources": [
+        "https://www.hessian.ai/research/",
+        "https://www.hessian.ai/about/"
+      ],
+      "identity_sources": [
+        "https://ror.org/014ybqb54"
+      ],
+      "identity_evidence": [],
+      "evidence": [
+        {
+          "source": "https://www.hessian.ai/research/",
+          "quote": "Robotics Models of Higher Cognition Psychology of Information Processing Database Systems Software Engineering Distributed Systems Hardware Bioinformatics Semantic Web Sustainability Medicine Finance Multimodal AI 620+ Publications"
+        },
+        {
+          "source": "https://www.hessian.ai/research/",
+          "quote": "Prof.‘in Georgia Chalvatzaki, Ph.D SIREN – Structured Interactive Perception and Learning for Holistic Robotic Embodied Intelligence Call 2024"
+        },
+        {
+          "source": "https://www.hessian.ai/research/",
+          "quote": "Prof. Dr. Jan Peters SKILLS4ROBOTS – Policy Learning of Motor Skills for Humanoid Robots Call 2014"
+        },
+        {
+          "source": "https://www.hessian.ai/about/",
+          "quote": "AI systems will be advanced across the entire spectrum of computer science – from hardware and robots to databases and software engineering."
+        }
+      ],
+      "assessed_on": "2026-10-28T12:56:07.009193+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "hessian center for artificial intelligence",
+        "hessian.ai"
+      ]
+    },
+    {
       "institution": "Honda Research Institute Japan",
       "canonical_name": "Honda Research Institute Japan Co., Ltd. (Japan)",
       "score": 0.8,
