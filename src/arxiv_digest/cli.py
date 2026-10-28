@@ -35,7 +35,7 @@ def daily_time(value: str) -> time:
             raise ValueError
         return parsed
     except ValueError:
-        raise argparse.ArgumentTypeError("Use local time HH:MM, e.g. 09:30") from None
+        raise argparse.ArgumentTypeError("Use local time HH:MM, e.g. 11:00") from None
 
 
 def main(argv=None) -> int:

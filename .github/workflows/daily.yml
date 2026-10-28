@@ -3,11 +3,11 @@ run-name: ${{ inputs.scheduler_id && format('Daily arXiv Digest · {0}', inputs.
 
 on:
   schedule:
-    # 01:30 UTC = 09:30 Asia/Shanghai; edit this cron to change start time.
+    # 03:00 UTC = 11:00 Asia/Shanghai; edit this cron to change start time.
     # Keep --daily-after below in sync when changing the target local time.
-    - cron: '30 1 * * *'
-    # Fallback checks at 09:47–23:47 Beijing time. Acknowledged daily mail is not resent.
-    - cron: '47 1-15 * * *'
+    - cron: '0 3 * * *'
+    # Fallback checks at 11:17–23:17 Beijing time. Acknowledged daily mail is not resent.
+    - cron: '17 3-15 * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -90,7 +90,7 @@ jobs:
             preview) uv run --locked --no-dev arxiv-digest run --dry-run ;;
             send|daily)
               if [ "$AUTO_DAILY" = 'true' ]; then
-                uv run --locked --no-dev arxiv-digest run --persist-outbox --daily-after 09:30
+                uv run --locked --no-dev arxiv-digest run --persist-outbox --daily-after 11:00
               else
                 uv run --locked --no-dev arxiv-digest run --persist-outbox
               fi

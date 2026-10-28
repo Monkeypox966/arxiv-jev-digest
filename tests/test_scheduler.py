@@ -9,7 +9,7 @@ from conftest import ROOT
 
 from arxiv_digest.store import Store, recipient_key
 
-NOW = datetime(2026, 10, 27, 10, tzinfo=ZoneInfo("Asia/Shanghai"))
+NOW = datetime(2026, 10, 27, 12, tzinfo=ZoneInfo("Asia/Shanghai"))
 
 
 @pytest.fixture
@@ -64,7 +64,7 @@ def test_acknowledged_receipt_skips_dispatch_and_pre_due_skips_even_api(schedule
     result = scheduler.tick(settings, api, {}, now=NOW)
     assert result["status"] == "delivered" and api.calls == ["receipt"]
     api.calls.clear()
-    result = scheduler.tick(settings, api, {}, now=NOW.replace(hour=9, minute=29))
+    result = scheduler.tick(settings, api, {}, now=NOW.replace(hour=10, minute=59))
     assert result["status"] == "not_due" and api.calls == []
 
 

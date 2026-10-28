@@ -32,7 +32,7 @@ class Settings:
     ref: str = "main"
     workflow: str = "daily.yml"
     timezone: str = "Asia/Shanghai"
-    after: str = "09:30"
+    after: str = "11:00"
     directory: Path = Path("/var/lib/arxiv-digest-scheduler")
 
     def __post_init__(self):
@@ -55,7 +55,7 @@ class Settings:
             ref=os.environ.get("GITHUB_REF_NAME", "main"),
             workflow=os.environ.get("GITHUB_WORKFLOW_FILE", "daily.yml"),
             timezone=os.environ.get("DIGEST_TIMEZONE", "Asia/Shanghai"),
-            after=os.environ.get("DAILY_AFTER", "09:30"),
+            after=os.environ.get("DAILY_AFTER", "11:00"),
             directory=Path(os.environ.get("STATE_DIRECTORY", "/var/lib/arxiv-digest-scheduler")),
         )
 

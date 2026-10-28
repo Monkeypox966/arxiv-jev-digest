@@ -76,11 +76,11 @@ Open **Actions → Daily arXiv Digest → Run workflow**:
 
 ## Step 5: Check the daily schedule
 
-The primary run is scheduled for **09:30 Beijing time (01:30 UTC)**, with hourly fallback checks at **09:47–23:47 Beijing time**. Automatic runs check each recipient's acknowledged daily delivery, including empty digests. Already-delivered recipients are skipped before fetching papers or calling models. Manual `send` deliveries count; `delivery_test` messages do not. Manual `send` itself remains an explicit additional run.
+The primary run is scheduled for **11:00 Beijing time (03:00 UTC)**, with hourly fallback checks at **11:17–23:17 Beijing time**. Automatic runs check each recipient's acknowledged daily delivery, including empty digests. Already-delivered recipients are skipped before fetching papers or calling models. Manual `send` deliveries count; `delivery_test` messages do not. Manual `send` itself remains an explicit additional run.
 
-To change the target time, update the primary cron, fallback window and `--daily-after 09:30` in [`daily.yml`](.github/workflows/daily.yml). Cron uses UTC; the daily guard uses `timezone` from `config.toml`.
+To change the target time, update the primary cron, fallback window and `--daily-after 11:00` in [`daily.yml`](.github/workflows/daily.yml). Cron uses UTC; the daily guard uses `timezone` from `config.toml`.
 
-To cover missed GitHub cron events, install the [independent Linux scheduler](deploy/README.md). It starts at 09:30 Beijing time and checks persisted SMTP receipts every 10 minutes, retrying unfinished deliveries. No model or SMTP credentials are needed on the server. Repository files alone do not install the timer.
+To cover missed GitHub cron events, install the [independent Linux scheduler](deploy/README.md). It starts at 11:00 Beijing time and checks persisted SMTP receipts every 10 minutes, retrying unfinished deliveries. No model or SMTP credentials are needed on the server. Repository files alone do not install the timer.
 
 Institutions contribute **40%** of the ranking. S/A/B tiers score **100/80/60**, with a minimum of **80** for verified institutions, excluding B-tier papers. Unknown institutions use separate `unknown_policy` / `unlisted_policy` settings. See the [list and configuration](docs/ranking.md). Motion imitation also includes `mimic`, requiring a humanoid or bipedal control contribution.
 
