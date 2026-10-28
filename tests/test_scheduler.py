@@ -61,6 +61,7 @@ def config(scheduler, tmp_path):
 
 def test_acknowledged_receipt_skips_dispatch_and_pre_due_skips_even_api(scheduler, tmp_path):
     settings, api = config(scheduler, tmp_path), API(receipt())
+    assert settings.after == "11:00"
     result = scheduler.tick(settings, api, {}, now=NOW)
     assert result["status"] == "delivered" and api.calls == ["receipt"]
     api.calls.clear()

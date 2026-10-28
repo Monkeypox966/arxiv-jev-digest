@@ -8,6 +8,8 @@
 4. 修改依赖时运行 `uv lock`，一起提交 `pyproject.toml` 和 `uv.lock`。
 5. 更新配置示例和文档；PR 描述中说明行为变化及验证方式。
 
+修改 `deploy/` 时，额外运行 `sh -n deploy/*.sh`；Linux 维护者应使用 `systemd-analyze verify` 检查 service 和 timer 文件。服务器调度器不应读取模型或 SMTP Secret。
+
 测试不要依赖真实 API Key、SMTP 账号、网络或付费模型。演示数据必须明确标注为虚构。不要提交 `.env`、个人邮箱、状态数据库或实际运行报告。
 
 新增模型后端时保留严格的响应校验、可控重试和版本记录。发送流程变更需要覆盖“服务器可能已接收但客户端未确认”的情况。

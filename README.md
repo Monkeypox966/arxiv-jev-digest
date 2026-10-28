@@ -82,7 +82,7 @@ weight = 1.0
 
 修改时间时同步调整 [`daily.yml`](.github/workflows/daily.yml) 的主任务 cron、备用时间范围及 `--daily-after 11:00`。cron 使用 UTC；每日去重与最早发送时间按 `config.toml` 的 `timezone` 判断。
 
-需要避免 GitHub cron 漏触发时，在持续在线的 Linux 服务器按[独立调度教程](deploy/README.md)安装定时器：11:00 启动，之后每 10 分钟核对 SMTP 发送回执，未完成才补跑。服务器无需模型或邮箱密钥；仅提交代码不会自动安装定时器。
+需要避免 GitHub cron 漏触发时，在持续在线的 Linux 服务器按[独立调度教程](deploy/README.md)安装定时器：11:00 启动，之后每 10 分钟核对 SMTP 发送回执，未完成才补跑。服务器无需模型或邮箱密钥；仅提交代码不会自动安装定时器。英文说明见 [deploy/README.en.md](deploy/README.en.md)。
 
 默认机构权重 **40%**，S/A/B 分为 **100/80/60**，已核实机构的最低门槛为 **80 分**，因此 B 档会被过滤。未知机构独立按 `unknown_policy` / `unlisted_policy` 处理；[名单与配置](docs/ranking.md)。动作模仿方向也包含 `mimic`，仍要求与人形或双足控制相关。
 
