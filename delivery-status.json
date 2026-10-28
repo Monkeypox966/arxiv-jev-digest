@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "date": "2026-10-28",
+  "date": "2026-10-29",
   "timezone": "Asia/Shanghai",
   "recipient_count": 1,
-  "acknowledged_count": 1,
+  "acknowledged_count": 0,
   "pending_count": 0,
-  "delivered": true
+  "delivered": false
 }
