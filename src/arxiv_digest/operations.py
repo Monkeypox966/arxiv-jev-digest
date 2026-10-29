@@ -275,6 +275,10 @@ def actions_summary(config: Config) -> dict:
             + {
                 "before_daily_send_time": "尚未到当天发送时间；不抓取、不调用模型、不发邮件。",
                 "already_delivered_today": "当天日报已经发送；不抓取、不调用模型、不重复发信。",
+                "waiting_for_arxiv_update": (
+                    "arXiv 仍是旧公告批次，等待更新；不调用模型、不发邮件，下次继续检查。"
+                ),
+                "no_matching_papers": "没有新的匹配论文；不发送空日报。",
             }.get(stats["skip_reason"], stats["skip_reason"]),
         ]
     if health.get("error"):

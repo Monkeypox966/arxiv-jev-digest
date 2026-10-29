@@ -78,15 +78,15 @@ weight = 1.0
 
 ## 第五步：确认每天自动运行
 
-主任务计划每天**北京时间 11:00 启动**，备用任务在 **11:17–23:17 每小时检查一次**。按收件人核对当天已确认的日报（含空日报），已发送则不抓取、不调用模型、不重复发信；手动 `send` 补发也计入，`delivery_test` 不计入。手动 `send` 本身仍可主动再次发送。
+服务器每天**北京时间 10:00–23:00 每小时触发一次** `daily`；GitHub 自身 cron 保留为同一时段的备用触发。Actions 先判断当天是否已发送，再核实 `/new` 公告日期是否为今天：已发送或未更新就跳过，不调用模型、不发邮件；新批次公布且有匹配论文时发送一次。
 
-修改时间时同步调整 [`daily.yml`](.github/workflows/daily.yml) 的主任务 cron、备用时间范围及 `--daily-after 11:00`。cron 使用 UTC；每日去重与最早发送时间按 `config.toml` 的 `timezone` 判断。
+修改时间时同步调整 [`daily.yml`](.github/workflows/daily.yml) 的 cron、`--daily-after 10:00` 和 `deploy/` 定时器。cron 使用 UTC；公告日期和当天去重按 `config.toml` 的 `timezone` 判断。
 
-需要避免 GitHub cron 漏触发时，在持续在线的 Linux 服务器按[独立调度教程](deploy/README.md)安装定时器：11:00 启动，之后每 10 分钟核对 SMTP 发送回执，未完成才补跑。服务器无需模型或邮箱密钥；仅提交代码不会自动安装定时器。英文说明见 [deploy/README.en.md](deploy/README.en.md)。
+需要避免 GitHub cron 漏触发时，在持续在线的 Linux 服务器按[独立调度教程](deploy/README.md)安装每小时触发器。服务器不判断是否需要发信，也不需要模型或邮箱密钥；实际判断都在 Actions。英文说明见 [deploy/README.en.md](deploy/README.en.md)。
 
 默认机构权重 **40%**，S/A/B 分为 **100/80/60**，已核实机构的最低门槛为 **80 分**，因此 B 档会被过滤。未知机构独立按 `unknown_policy` / `unlisted_policy` 处理；[名单与配置](docs/ranking.md)。动作模仿方向也包含 `mimic`，仍要求与人形或双足控制相关。
 
-**没有新增匹配论文时也发送空日报**（`email.send_empty = true`），邮件会说明本次无匹配论文。空日报本身不额外调用模型；如有新候选，仍需调用决策模型判断相关性。新提交和跨分类按论文去重；修订论文按版本去重，已发 v1 后可推送 v2，同一 v2 不重复。周末可能继续读取上一公告批次。设为 `false` 可关闭空日报。GitHub 定时任务可能延迟或漏触发，并非准点投递服务；超过 60 天无仓库活动也可能自动停用。[官方说明](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+**不发送任何空日报**：未更新、周末无公告或新批次没有匹配论文时均不发信。旧公告会在调用元数据 API 和模型前跳过，等待下个整点；所有订阅分类都更新后才继续。新提交和跨分类按论文去重，修订按版本去重。GitHub 定时任务可能延迟或漏触发；[官方说明](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)。
 
 <br>
 

@@ -1,9 +1,9 @@
 [Unit]
-Description=Check arXiv Digest every 10 minutes during Beijing daytime
+Description=Trigger arXiv Digest hourly during Beijing daytime
 
 [Timer]
-# 03:00 UTC = 11:00 Beijing. The script skips the 10:00/10:10/10:20 checks.
-OnCalendar=*-*-* 03..15:00/10:00 UTC
+# 02:00–15:00 UTC = 10:00–23:00 Beijing, once per hour.
+OnCalendar=*-*-* 02..15:00:00 UTC
 AccuracySec=1s
 RandomizedDelaySec=0
 Persistent=yes

@@ -126,7 +126,7 @@ class EmailSettings(Settings):
     sender_name: str = "arXiv Paper Digest"
     subject_prefix: str = "arXiv 论文日报"
     recipients: list[str] = Field(default_factory=list)
-    send_empty: bool = False
+    send_empty: bool = False  # Legacy option retained for loading old configs; ignored.
     timeout_seconds: float = Field(default=45, gt=0, le=120)
 
     @field_validator("host", "sender_name", "subject_prefix")

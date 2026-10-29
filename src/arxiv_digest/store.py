@@ -400,26 +400,39 @@ class Store:
         ).fetchall()
         return [dict(zip(("id", "recipient_hash", "created"), row, strict=True)) for row in rows]
 
-    def delivered_today(self, recipient: str, *, now: datetime) -> bool:
+    def delivered_today(
+        self, recipient: str, *, now: datetime, minimum_announcement: str | None = None
+    ) -> bool:
         """Count acknowledged digests, including empty ones; SMTP tests do not count.
 
         Older state has no acknowledgement timestamp, so use its preparation time.
         Compare in the caller's configured timezone, never the runner's timezone.
+        A guarded /new delivery also requires selected papers and a current announcement;
+        legacy empty emails must not finalize a newly published batch.
         """
         rows = self.db.execute(
-            "SELECT coalesce(nullif(sent_at, ''), created) FROM outbox "
+            "SELECT coalesce(nullif(sent_at, ''), created), announcement, selected FROM outbox "
             "WHERE recipient=? AND status='sent' AND profile!='delivery-test-v1'",
             (recipient,),
         )
         return any(
             datetime.fromisoformat(row[0]).astimezone(now.tzinfo).date() == now.date()
+            and (
+                minimum_announcement is None
+                or (row[1] >= minimum_announcement and bool(json.loads(row[2])))
+            )
             for row in rows
         )
 
-    def delivery_status(self, targets: list[str], *, now: datetime) -> dict:
+    def delivery_status(
+        self, targets: list[str], *, now: datetime, minimum_announcement: str | None = None
+    ) -> dict:
         """Public aggregate receipt for an independent scheduler; no email addresses."""
         targets = set(targets)
-        acknowledged = sum(self.delivered_today(target, now=now) for target in targets)
+        acknowledged = sum(
+            self.delivered_today(target, now=now, minimum_announcement=minimum_announcement)
+            for target in targets
+        )
         pending = sum(item["recipient_hash"] in targets for item in self.pending())
         return {
             "schema_version": 1,

@@ -234,7 +234,7 @@ def test_recovered_paper_survives_smtp_login_failure_after_leaving_feed(
             config, client, mailer_factory=lambda _: Mailer(messages), now=due + timedelta(hours=1)
         )
     assert recovered["selected_unique"] == recovered["emails_sent"] == 1
-    assert len(messages) == 2
+    assert len(messages) == 1  # The initial no-match run no longer sends an empty digest.
     assert novel.url in messages[-1].get_body(preferencelist=("plain",)).get_content()
 
 

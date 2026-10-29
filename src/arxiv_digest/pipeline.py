@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-from .arxiv import category_matches, fetch_papers
+from .arxiv import AnnouncementNotReady, category_matches, fetch_papers
 from .clients import (
     DeepSeekClient,
     JevClient,
@@ -142,6 +142,9 @@ def _run(
     targets = addresses or ["preview@example.invalid"]
     profile = profile_key(config)
     daily_stats = {}
+    minimum_announcement = (
+        now.date().isoformat() if daily_after is not None and config.arxiv.source == "new" else None
+    )
     if daily_after is not None:
         if not addresses:
             raise ValueError("Daily delivery guard requires configured recipients")
@@ -176,7 +179,9 @@ def _run(
             targets = [
                 address
                 for address in targets
-                if not store.delivered_today(recipient_key(address), now=now)
+                if not store.delivered_today(
+                    recipient_key(address), now=now, minimum_announcement=minimum_announcement
+                )
             ]
             daily_stats["skipped_recipients"] = len(addresses) - len(targets)
             if not targets:
@@ -224,7 +229,36 @@ def _run(
                     else fetch_papers(settings, client, now=now)
                 )
         else:
-            groups[""] = fetch_papers(config.arxiv, client, now=now)
+            try:
+                groups[""] = fetch_papers(
+                    config.arxiv,
+                    client,
+                    now=now,
+                    **(
+                        {"announcement_not_before": minimum_announcement}
+                        if minimum_announcement
+                        else {}
+                    ),
+                )
+            except AnnouncementNotReady as exc:
+                LOG.info("Waiting for arXiv batch %s; observed %s", exc.required, exc.observed)
+                return {
+                    **daily_stats,
+                    "skip_reason": "waiting_for_arxiv_update",
+                    "required_announcement_date": exc.required,
+                    "announcement_dates": sorted(set(exc.observed.values())),
+                    "emails_sent": 0,
+                    "selected_unique": 0,
+                    "usage": usage.snapshot(),
+                }
+        announcement_dates = sorted(
+            {
+                day
+                for group in groups.values()
+                for day in list(getattr(group, "announcement_dates", []))
+                + [p.announced for p in group if p.announced]
+            }
+        )
         latest_by_group = {
             category: max((p.announced for p in group if p.announced), default="")
             for category, group in groups.items()
@@ -472,7 +506,7 @@ def _run(
             },
             "emails_sent": 0,
             "dry_run": dry_run,
-            "announcement_dates": sorted({p.announced for p in fetched if p.announced}),
+            "announcement_dates": announcement_dates,
             "usage": usage.snapshot(),
         }
         usage.assert_within_limits()
@@ -547,7 +581,7 @@ def _run(
                     elif detail is not None and paper.id not in chosen:
                         store.clear_metadata_retry(key, None, paper.tracking_id)
             candidates = [p.tracking_id for p in pools[address]]
-            if not picks and not config.email.send_empty:
+            if not picks:
                 store.mark_reviewed(key, profile, candidates, checkpoint_updates=updates)
                 LOG.info("No new matches for recipient %d; email skipped", index)
                 continue
@@ -559,6 +593,7 @@ def _run(
                     profile,
                     candidates,
                     [p.paper.id for p in picks],
+                    announcement=min(announcement_dates, default=""),
                     checkpoint_updates=updates,
                     staged=True,
                     selected_versions=[
@@ -575,6 +610,8 @@ def _run(
                 send_prepared(store, delivery, mailer, message, outbox_hook=outbox_hook)
                 stats["emails_sent"] += 1
                 LOG.info("Delivered digest to recipient %d", index)
+        if not dry_run and not stats["emails_sent"]:
+            stats["skip_reason"] = "no_matching_papers"
         LOG.info(
             "Completed: %d unique selections; %d emails sent",
             stats["selected_unique"],

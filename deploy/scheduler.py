@@ -1,4 +1,4 @@
-"""Independent Linux timer: dispatch daily mode and verify persisted SMTP receipts.
+"""Independent hourly trigger; Actions owns batch checks and delivery deduplication.
 
 Python standard library only. No model/SMTP credentials or paper database are needed.
 """
@@ -6,7 +6,6 @@ Python standard library only. No model/SMTP credentials or paper database are ne
 from __future__ import annotations
 
 import argparse
-import base64
 import json
 import os
 import re
@@ -32,7 +31,7 @@ class Settings:
     ref: str = "main"
     workflow: str = "daily.yml"
     timezone: str = "Asia/Shanghai"
-    after: str = "11:00"
+    after: str = "10:00"
     directory: Path = Path("/var/lib/arxiv-digest-scheduler")
 
     def __post_init__(self):
@@ -55,7 +54,7 @@ class Settings:
             ref=os.environ.get("GITHUB_REF_NAME", "main"),
             workflow=os.environ.get("GITHUB_WORKFLOW_FILE", "daily.yml"),
             timezone=os.environ.get("DIGEST_TIMEZONE", "Asia/Shanghai"),
-            after=os.environ.get("DAILY_AFTER", "11:00"),
+            after=os.environ.get("DAILY_AFTER", "10:00"),
             directory=Path(os.environ.get("STATE_DIRECTORY", "/var/lib/arxiv-digest-scheduler")),
         )
 
@@ -99,14 +98,6 @@ class GitHub:
             # Do not log request objects, headers, tokens or response bodies.
             raise SchedulerError(f"GitHub API HTTP {exc.code}") from None
 
-    def receipt(self):
-        result = self.call("contents/delivery-status.json?ref=digest-state", missing_ok=True)
-        if result is None:
-            return None
-        if result.get("encoding") != "base64" or result.get("size", 0) > 65536:
-            raise SchedulerError("Unexpected delivery receipt format")
-        return json.loads(base64.b64decode(result["content"]))
-
     def runs(self):
         return self.call(
             "actions/workflows/"
@@ -134,22 +125,6 @@ def atomic_json(path, value):
         temporary.unlink(missing_ok=True)
 
 
-def validate_receipt(value, config):
-    if value is None:
-        return
-    if value.get("schema_version") != 1 or value.get("timezone") != config.timezone:
-        raise SchedulerError("Receipt schema/timezone does not match scheduler configuration")
-    for name in ("recipient_count", "acknowledged_count", "pending_count"):
-        if type(value.get(name)) is not int or value[name] < 0:
-            raise SchedulerError("Invalid receipt counts")
-    count, acknowledged = value["recipient_count"], value["acknowledged_count"]
-    if acknowledged > count or type(value.get("delivered")) is not bool:
-        raise SchedulerError("Invalid delivery receipt")
-    if value["delivered"] != (count > 0 and acknowledged == count and value["pending_count"] == 0):
-        raise SchedulerError("Inconsistent delivery receipt")
-    datetime.fromisoformat(value["date"])
-
-
 def tick(config, api, state, *, now=None, force_dispatch=False):
     now = (now or datetime.now(UTC)).astimezone(ZoneInfo(config.timezone))
 
@@ -161,11 +136,6 @@ def tick(config, api, state, *, now=None, force_dispatch=False):
 
     if now.time() < time.fromisoformat(config.after) and not force_dispatch:
         return finish("not_due")
-    receipt = api.receipt()
-    validate_receipt(receipt, config)
-    if receipt and receipt["date"] == now.date().isoformat() and receipt["delivered"]:
-        if not force_dispatch:
-            return finish("delivered", receipt=receipt)
     runs = api.runs()
     active = next((run for run in runs if run["status"] != "completed"), None)
     if active:
@@ -175,8 +145,6 @@ def tick(config, api, state, *, now=None, force_dispatch=False):
                 "Workflow is stuck for over 110 minutes; operator attention needed"
             )
         return finish("running", run_id=active["id"], run_url=active["html_url"])
-    if receipt and receipt["pending_count"]:
-        raise SchedulerError("Uncertain SMTP acceptance: inspect pending delivery before retrying")
     previous = state.get("last_dispatch")
     if previous:
         elapsed = (now - datetime.fromisoformat(previous["at"])).total_seconds()
@@ -187,13 +155,13 @@ def tick(config, api, state, *, now=None, force_dispatch=False):
         if matched is None and elapsed < 15 * 60:
             return finish("awaiting_run_index", marker=previous["marker"])
         if matched is not None and elapsed < 5 * 60:
-            return finish("awaiting_receipt", run_id=matched["id"])
+            return finish("awaiting_previous_run", run_id=matched["id"])
     marker = "vps-" + now.strftime("%Y%m%dT%H%M%S-") + uuid.uuid4().hex[:8]
     state["last_dispatch"] = {"marker": marker, "at": now.isoformat()}
     # Record intent before POST so loss of the response never causes an immediate duplicate.
     atomic_json(config.directory / "state.json", state)
     api.dispatch(marker)
-    return finish("dispatched", marker=marker, receipt=receipt)
+    return finish("dispatched", marker=marker)
 
 
 def main(argv=None):
@@ -201,7 +169,7 @@ def main(argv=None):
     parser.add_argument(
         "--force-dispatch",
         action="store_true",
-        help="Test the external trigger even after today's receipt; still uses daily deduplication",
+        help="Test the external trigger before DAILY_AFTER; Actions still applies daily guards",
     )
     args = parser.parse_args(argv)
     config = Settings.from_env()

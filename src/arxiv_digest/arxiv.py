@@ -166,6 +166,20 @@ NEW_SECTIONS = {
 }
 
 
+class AnnouncementNotReady(ServiceError):
+    def __init__(self, required: str, observed: dict[str, str]):
+        super().__init__("arXiv: waiting for the scheduled announcement batch")
+        self.required, self.observed = required, observed
+
+
+class AnnouncementBatch(list):
+    """Retain dated listing evidence even when the category contains zero papers."""
+
+    def __init__(self, papers, dates):
+        super().__init__(papers)
+        self.announcement_dates = sorted(set(dates))
+
+
 def parse_new_page(text: str) -> tuple[str, list[tuple[str, list[str], int]], int]:
     """Read /new's dated three-section page, including partial pagination slices."""
     soup = BeautifulSoup(text, "html.parser")
@@ -223,8 +237,14 @@ def parse_new_page(text: str) -> tuple[str, list[tuple[str, list[str], int]], in
     return announced, groups, total
 
 
-def fetch_new(settings: ArxivSettings, client: httpx.Client, limiter: RateLimiter) -> list[Paper]:
-    discovered = {}
+def fetch_new(
+    settings: ArxivSettings,
+    client: httpx.Client,
+    limiter: RateLimiter,
+    *,
+    announcement_not_before: str | None = None,
+) -> list[Paper]:
+    discovered, announcements = {}, {}
     for category in settings.categories:
         offset, total, announced = 0, None, None
         section_ids, section_totals, seen = {}, {}, set()
@@ -238,6 +258,9 @@ def fetch_new(settings: ArxivSettings, client: httpx.Client, limiter: RateLimite
                 params={"skip": offset, "show": 2000},
             )
             day, groups, count = parse_new_page(response.text)
+            announcements[category] = day
+            if announcement_not_before and day < announcement_not_before:
+                raise AnnouncementNotReady(announcement_not_before, announcements)
             if count > 30000:
                 raise ServiceError("arXiv /new: announcement exceeds the 30000-entry scan limit")
             if total is not None and (total != count or announced != day):
@@ -283,7 +306,7 @@ def fetch_new(settings: ArxivSettings, client: httpx.Client, limiter: RateLimite
         if kind == "replace" and not paper.version:
             raise ServiceError("arXiv /new: replacement metadata has no explicit version")
         papers.append(replace(paper, announced=day, announcement_type=kind))
-    return papers
+    return AnnouncementBatch(papers, announcements.values())
 
 
 def parse_latest_listing(text: str) -> tuple[str, list[str]]:
@@ -504,10 +527,11 @@ def fetch_papers(
     *,
     now: datetime | None = None,
     since: str | None = None,
+    announcement_not_before: str | None = None,
 ) -> list[Paper]:
     limiter = RateLimiter(settings.request_interval_seconds)
     if settings.source == "new":
-        return fetch_new(settings, client, limiter)
+        return fetch_new(settings, client, limiter, announcement_not_before=announcement_not_before)
     if settings.source == "latest":
         return fetch_latest(settings, client, limiter, since=since)
     if settings.source == "rss":

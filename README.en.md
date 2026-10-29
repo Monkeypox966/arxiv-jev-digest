@@ -76,15 +76,15 @@ Open **Actions → Daily arXiv Digest → Run workflow**:
 
 ## Step 5: Check the daily schedule
 
-The primary run is scheduled for **11:00 Beijing time (03:00 UTC)**, with hourly fallback checks at **11:17–23:17 Beijing time**. Automatic runs check each recipient's acknowledged daily delivery, including empty digests. Already-delivered recipients are skipped before fetching papers or calling models. Manual `send` deliveries count; `delivery_test` messages do not. Manual `send` itself remains an explicit additional run.
+The server dispatches `daily` **hourly from 10:00 through 23:00 Beijing time**. GitHub cron remains a backup over the same hours. Actions first checks today's acknowledged delivery, then verifies that every `/new` listing is dated today. Already-delivered or stale-batch runs skip models and email; a fresh batch with matching papers sends once.
 
-To change the target time, update the primary cron, fallback window and `--daily-after 11:00` in [`daily.yml`](.github/workflows/daily.yml). Cron uses UTC; the daily guard uses `timezone` from `config.toml`.
+To change the hours, update the cron and `--daily-after 10:00` in [`daily.yml`](.github/workflows/daily.yml), plus the timer in `deploy/`. Cron uses UTC; batch dates and daily deduplication use `timezone` from `config.toml`.
 
-To cover missed GitHub cron events, install the [independent Linux scheduler](deploy/README.md) ([English deployment guide](deploy/README.en.md)). It starts at 11:00 Beijing time and checks persisted SMTP receipts every 10 minutes, retrying unfinished deliveries. No model or SMTP credentials are needed on the server. Repository files alone do not install the timer.
+To cover missed GitHub cron events, install the [independent hourly server trigger](deploy/README.en.md). The server only dispatches; Actions owns freshness and delivery decisions. No model or SMTP credentials are needed on the server.
 
 Institutions contribute **40%** of the ranking. S/A/B tiers score **100/80/60**, with a minimum of **80** for verified institutions, excluding B-tier papers. Unknown institutions use separate `unknown_policy` / `unlisted_policy` settings. See the [list and configuration](docs/ranking.md). Motion imitation also includes `mimic`, requiring a humanoid or bipedal control contribution.
 
-**An empty digest is sent even when there are no new matching papers** (`email.send_empty = true`), explaining that no matches are available. Sending an empty digest adds no model calls; any new candidates still require decision model screening. New submissions and cross-lists are deduplicated by paper; replacements by version. A delivered v1 can be followed by v2, but the same v2 is not resent. Weekends may reuse the latest announcement batch. Set this option to `false` to skip empty digests. GitHub scheduled runs can be delayed or dropped, and public repositories with no activity for 60 days may have schedules disabled. [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+**Empty digests are never sent**, including stale batches, weekends without announcements and fresh batches without matching papers. Stale listings skip before metadata API or model calls and wait for the next hourly check. All subscribed categories must be up to date. New submissions and cross-lists are deduplicated by paper, replacements by version. GitHub scheduled runs can be delayed or dropped; see the [GitHub documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
 <br>
 

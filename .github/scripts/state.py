@@ -86,8 +86,15 @@ def main(argv=None):
         )
         targets = [recipient_key(email_address(value)) for value in addresses if value.strip()]
         with Store(directory) as store:
+            now = datetime.now(ZoneInfo(config.get("timezone", "Asia/Shanghai")))
             snapshot = store.delivery_status(
-                targets, now=datetime.now(ZoneInfo(config.get("timezone", "Asia/Shanghai")))
+                targets,
+                now=now,
+                minimum_announcement=(
+                    now.date().isoformat()
+                    if config.get("arxiv", {}).get("source", "new") == "new"
+                    else None
+                ),
             )
         (directory / "delivery-status.json").write_text(
             json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

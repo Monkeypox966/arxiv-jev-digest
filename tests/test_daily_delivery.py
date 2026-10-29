@@ -98,7 +98,7 @@ class Mailer:
         self.messages.append(message)
 
 
-def test_fallback_retries_only_missing_recipients_and_sends_empty_digest(config, monkeypatch):
+def test_empty_digest_is_never_sent_even_with_legacy_send_empty_true(config, monkeypatch):
     monkeypatch.setenv("EMAIL_TO", "first@example.com,second@example.com")
     config.email.send_empty = True
     with Store(config.state_dir) as store:
@@ -117,14 +117,13 @@ def test_fallback_retries_only_missing_recipients_and_sends_empty_digest(config,
             client,
             now=NOW,
             daily_after=time(9, 30),
-            mailer_factory=lambda _: Mailer(messages),
+            mailer_factory=unexpected,
             outbox_hook=persist_pending,
         )
-    assert result["emails_sent"] == result["skipped_recipients"] == 1
+    assert result["emails_sent"] == 0 and result["skipped_recipients"] == 1
+    assert result["skip_reason"] == "no_matching_papers"
     assert result["selected_unique"] == result["usage"]["totals"]["attempts"] == 0
-    assert [message["To"] for message in messages] == ["second@example.com"]
-    assert pending_sizes == [0, 1]
-    assert "0 篇" in messages[0]["Subject"]
+    assert messages == [] and pending_sizes == []
     with Store(config.state_dir) as store:
         assert not store.pending()
         assert store.db.execute("SELECT count(*) FROM sent").fetchone()[0] == 0
