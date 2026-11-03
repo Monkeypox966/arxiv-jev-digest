@@ -212,6 +212,54 @@
       ]
     },
     {
+      "institution": "Shanghai Innovation Institute",
+      "canonical_name": "Shanghai Innovation Institute",
+      "score": 0.8,
+      "status": "assessed",
+      "confidence": 0.85,
+      "reason": "The institute documents substantial concrete robotics/embodied-AI achievements in category cs.RO: humanoid ping-pong dual-play (PingpongDuo), embodied task agent paradigm (ETA/OpenETA) with real UR5e robot experiments and LIBERO benchmarks, VLA models (SyVLA, τ₀-VLA), and embodied foundation models. Evidence spans two distinct pages (homepage and research-progress list) plus a dedicated project page.",
+      "sources": [
+        "https://www.sii.edu.cn/8/list.htm",
+        "https://www.sii.edu.cn/2026/0806/c27a1180/page.htm"
+      ],
+      "identity_sources": [
+        "https://ror.org/01fatbw66"
+      ],
+      "identity_evidence": [],
+      "evidence": [
+        {
+          "source": "https://www.sii.edu.cn/8/list.htm",
+          "quote": "人形机器人可以组队双打了！PingpongDuo实现双机协同击球、交替让位"
+        },
+        {
+          "source": "https://www.sii.edu.cn/8/list.htm",
+          "quote": "不到5%的数据逼近Pi0，上海创智学院提出开源VLA模型SyVLA"
+        },
+        {
+          "source": "https://www.sii.edu.cn/8/list.htm",
+          "quote": "创智邱锡鹏团队提出具身任务智能体新范式 ETA，开源 OpenETA"
+        },
+        {
+          "source": "https://www.sii.edu.cn/2026/0806/c27a1180/page.htm",
+          "quote": "上海创智学院邱锡鹏老师团队 提出具身任务智能体（Embodied Task Agent，ETA）范式，并发布开源实现 OpenETA"
+        },
+        {
+          "source": "https://www.sii.edu.cn/2026/0806/c27a1180/page.htm",
+          "quote": "OpenETA 通过标准化观测、结构化指令和后端适配器隔离任务层与设备层。仿真器和真实机器人只要对同一 Tool 保持一致的功能语义，任务拆解、工作记忆、恢复流程和证据链格式就可以继续复用，实现Sim2Real的无缝迁移"
+        },
+        {
+          "source": "https://www.sii.edu.cn/8/list.htm",
+          "quote": "τ₀-VLA：面向长程复杂任务的具身基础模型发布"
+        }
+      ],
+      "assessed_on": "2026-11-03T17:00:32.165475+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "shanghai innovation institute"
+      ]
+    },
+    {
       "institution": "ZJU",
       "canonical_name": "Zhejiang University",
       "score": 1.0,
