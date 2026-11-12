@@ -2,7 +2,7 @@
 
 ## 日常检查
 
-在 Actions 查看 Daily arXiv Digest 的运行结果和自动生成的运行摘要。每次处理记录 `health.json`、`usage.json`，失败时也写出。发送模式失败可按 `notifications.email_on_failure` 向原收件人发异常通知；预览、inspect 永不发邮件。SMTP 自身故障时异常信也可能发不出，GitHub 失败记录仍是必要的第二条检查渠道。
+在 Actions 查看 Daily arXiv Digest 的运行结果和自动生成的运行摘要。每次处理记录 `health.json`、`usage.json`，失败时也写出。只有成功生成且含匹配论文的日报才进入发送流程。失败通知、空日报及联调测试邮件均已关闭；预览、inspect 也不发邮件。`notifications.email_on_failure` 仅兼容旧配置加载，即使为 true 也不会发异常通知。失败原因通过 Actions 日志和健康报告查看。
 
 - HTTP 401 / 403：检查相应 Secret、模型权限和服务地址。
 - HTTP 402：检查服务商额度。
@@ -27,7 +27,7 @@
 
 outbox 增加兼容的 `sent_at` 可选列，与 sent 状态在同一事务中写入。旧记录回退使用其 created 时间，保留全部历史；迁移可重复执行。故障后人工 resolve 为 sent 的时间视为确认时间。检查发生在每日处理前，SMTP 最终投递跨午夜的极端情况仍应结合邮件日期人工核查。
 
-`health.json` / Actions Summary 记录目标时间、程序开始时的延迟秒数、跳过收件人数和跳过原因。GitHub 根本没有创建运行时，这些程序日志也无法产生，失败邮件同样无法触发。应先看 Actions 的 schedule 事件是否存在，再看 runner 开始时间、模型步骤、SMTP 和数据库状态。
+`health.json` / Actions Summary 记录目标时间、程序开始时的延迟秒数、跳过收件人数和跳过原因。GitHub 根本没有创建运行时，这些程序日志也无法产生。应先看 Actions 的 schedule 事件是否存在，再看 runner 开始时间、模型步骤、SMTP 和数据库状态。
 
 服务器触发避免只依赖 GitHub cron，但 Actions 仍可能排队或受平台故障影响。所有触发入口共用并发锁和每日守卫。
 
@@ -45,7 +45,7 @@ outbox 增加兼容的 `sent_at` 可选列，与 sent 状态在同一事务中�
 gh workflow run daily.yml --repo OWNER/REPO --ref main -f mode=daily
 ```
 
-替换 `OWNER/REPO`，默认分支不是 main 时也修改 `--ref`。外部使用的令牌只需执行 Actions 的适当权限，不需要模型或 SMTP 凭据。调用本身只创建工作流；服务器仍需检查命令退出码及后续运行结果，在失败时独立告警。可用 `gh run list --repo OWNER/REPO --workflow daily.yml --limit 5` 查看运行记录。
+替换 `OWNER/REPO`，默认分支不是 main 时也修改 `--ref`。外部使用的令牌只需执行 Actions 的适当权限，不需要模型或 SMTP 凭据。调用本身只创建工作流；服务器仍需检查命令退出码及后续运行结果，在失败时记录日志，等待下一次检查。可用 `gh run list --repo OWNER/REPO --workflow daily.yml --limit 5` 查看运行记录。
 
 外部调用与仓库定时任务使用同一并发锁、每日去重和发送前保护；已发送时不会额外调用模型或再次发日报。它能绕过 GitHub cron 漏触发，仍无法保证 GitHub Actions 整个平台或邮件服务故障时准点送达。
 
@@ -79,7 +79,7 @@ GitHub 发送模式先保存 `prepared`（确定未调用 SMTP），再保存 `p
 
 需要单独核查时选择 `inspect` 并给出 1–5 个 ID，下载 `metadata.json`。该模式使用真实 DeepSeek，保留机构数量、来源和字段状态、更新缓存，但不做 JEV 判断、不发送、不推进公告或已处理历史。CLI 对应 `inspect --refresh 2508.08241 2606.03985`。日报 / 元数据 JSON 的 schema_version 为 2，完整性改用 `institutions_found` / `institution_count`；`affiliations[].authors` 只保留以兼容旧数据，新提取不输出作者对应。
 
-单独验证邮箱选择 `delivery_test`（CLI `test-email`），会明确发一封联调测试邮件，使用与日报相同的认证、远端 pending 保存、SMTP 与确认流程。测试 outbox 不含论文 ID，所以不会改变真实论文的已发送/已处理历史；现有 pending 仍会阻止测试，不能用它绕过待确认记录。
+工作流已移除 `delivery_test` 入口。旧 CLI `test-email` 和 `notify-failure` 保留兼容调用，返回发送数量 0，不访问 SMTP、不改写发送历史。验证日报可先使用 `preview` 检查报告，再使用 `daily` 发送符合当日条件的论文。
 
 ## 预算与健康信息
 
@@ -87,7 +87,7 @@ GitHub 发送模式先保存 `prepared`（确定未调用 SMTP），再保存 `p
 
 调用次数上限严格受控。Token 在并发调用前预留，响应后结算；请求体字节数和最大输出用于保守估计。若估计已超剩余额度，即使实际可能较小也会终止本轮；已经在途的请求无法撤回，服务商隐藏 tokenization 也无法预先精确限制。超限后不开始新调用，也不发日报。系统不假定美元费用或服务商价格。
 
-认证、权限、余额错误或预算耗尽不能被元数据“尽力补充”逻辑吞掉。异常通知只是提醒任务未完整结束；邮件可能已经被服务器接受，按 pending 流程核实后再重试。
+认证、权限、余额错误或预算耗尽不能被元数据“尽力补充”逻辑吞掉。错误只记录到日志。SMTP 已接受日报后，如果后续状态保存或 Artifact 上传失败，该次工作流仍可能显示失败；已接受的日报无法撤回，按 pending 流程核实后再重试。
 
 ## 隐私、保留与空间
 

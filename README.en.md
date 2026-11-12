@@ -68,9 +68,8 @@ For another provider, update `[email]` with its SMTP settings. SSL and STARTTLS 
 
 Open **Actions → Daily arXiv Digest → Run workflow**:
 
-1. Run `delivery_test` to send one test email without calling any models. Confirm that your email settings work.
-2. Run `preview` to fetch papers and call the models without sending email. Download the report from **Artifacts** and open `digest.html` to check the selection and summaries.
-3. Run `send` for normal screening and delivery. The `daily` mode uses the automatic delivery guard and skips recipients already sent a digest today.
+1. Run `preview` to fetch papers and call the models without sending email. Download the report from **Artifacts** and open `digest.html` to check the selection and summaries.
+2. Run `send` for normal screening and delivery. The `daily` mode uses the automatic delivery guard and skips recipients already sent a digest today.
 
 <br>
 
@@ -119,8 +118,8 @@ GitHub Actions passes all three Secret names above; use `DECISION_API_KEY` for a
 Check **Actions → latest run → Summary** for its trigger, outcome, selection count and delivery count:
 
 - **No run:** check that the workflow is enabled and on the default branch; run `send` manually to catch up.
-- **Successful, zero deliveries:** check whether you used `preview` or disabled `email.send_empty`; normal send mode includes empty digests by default.
-- **Failed:** inspect the error and `health.json`; check API balance, Secrets and SMTP credentials.
+- **Successful, zero deliveries:** check for preview mode, stale announcements, a digest already sent today, or no matching papers. These outcomes send no email.
+- **Failed:** inspect the error and `health.json`; check API balance, Secrets and SMTP credentials. Failure alerts and test emails are disabled. Only successfully generated digests containing papers are emailed.
 - **Pending delivery:** check the inbox and spam folder, then follow the [recovery guide](docs/operations.md) before retrying.
 
 The workflow creates a `digest-state` branch for persistent history, caches and learned institutions. Keep that branch and the workflow's `contents: write` permission. Reports and a recovery database are uploaded as Actions Artifacts.

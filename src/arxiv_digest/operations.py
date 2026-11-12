@@ -1,4 +1,4 @@
-"""Bounded metadata diagnostics, run summaries, and optional failure mail."""
+"""Bounded metadata diagnostics and run summaries. Only paper digests may send email."""
 
 from __future__ import annotations
 
@@ -9,19 +9,18 @@ import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
 import httpx
 
 from .arxiv import fetch_by_ids
 from .clients import DeepSeekClient
-from .config import Config, recipients, require_env
+from .config import Config, require_env
 from .enrichment import Enricher
 from .http import ServiceError
 from .institution_assessment import InstitutionAssessor
-from .mailer import SMTPMailer, build_message, send_prepared
-from .store import Store, recipient_key
+from .mailer import SMTPMailer
+from .store import Store
 from .usage import UsageTracker
 
 
@@ -171,65 +170,8 @@ def latest_health(config: Config) -> dict:
 
 
 def test_delivery(config: Config, *, outbox_hook=None, mailer_factory=SMTPMailer) -> dict:
-    """Explicit SMTP test: no model calls and no real-paper history mutation."""
-    addresses = recipients(config)
-    if not addresses:
-        raise ValueError("Delivery test requires EMAIL_TO")
-    now = datetime.now(ZoneInfo(config.timezone))
-    directory = config.output_dir / (
-        now.strftime("%Y%m%d-%H%M%S-delivery-test-") + uuid.uuid4().hex[:8]
-    )
-    directory.mkdir(parents=True, exist_ok=True)
-    usage = UsageTracker(config.budget)
-    health = {"schema_version": 1, "operation": "delivery_test", "started_at": now.isoformat()}
-    sent = 0
-    try:
-        with Store(config.state_dir) as store:
-            for address in addresses:
-                key = recipient_key(address)
-                store.discard_prepared(key)
-                if store.pending(key):
-                    raise ServiceError("Resolve pending deliveries before running an SMTP test")
-                with mailer_factory(config) as mailer:
-                    delivery = store.prepare(key, "delivery-test-v1", [], [], staged=True)
-                    subject = config.email.subject_prefix + " · 投递联调测试"
-                    text = (
-                        "这是一封投递联调测试邮件，用于验证 QQ SMTP、发送前状态保存和确认流程。\n"
-                        "本次没有调用论文模型，也没有清除或改写真实论文的发送历史。\n"
-                        "测试时间：" + now.isoformat() + "\n"
-                    )
-                    import html
-
-                    try:
-                        message = build_message(
-                            config,
-                            address,
-                            delivery,
-                            subject,
-                            text,
-                            "<pre>" + html.escape(text) + "</pre>",
-                            now,
-                        )
-                    except BaseException:
-                        store.cancel_before_send(delivery)
-                        raise
-                    send_prepared(store, delivery, mailer, message, outbox_hook=outbox_hook)
-                    sent += 1
-        result = {"emails_sent": sent, "test_delivery": True, "output_dir": str(directory)}
-        health.update(status="success", stats=result)
-        return result
-    except BaseException as exc:
-        health.update(
-            status="failed",
-            error_type=type(exc).__name__,
-            error=str(exc) if isinstance(exc, ServiceError) else type(exc).__name__,
-        )
-        raise
-    finally:
-        health["usage"] = usage.snapshot()
-        health["finished_at"] = datetime.now(ZoneInfo(config.timezone)).isoformat()
-        for name, value in (("health.json", health), ("usage.json", usage.snapshot())):
-            (directory / name).write_text(json.dumps(value, ensure_ascii=False, indent=2), "utf-8")
+    """Compatibility entry point: non-paper test emails are disabled."""
+    return {"emails_sent": 0, "test_delivery": True, "skip_reason": "non_paper_email_disabled"}
 
 
 def actions_summary(config: Config) -> dict:
@@ -293,37 +235,5 @@ def actions_summary(config: Config) -> dict:
 
 
 def notify_failure(config: Config, run_url: str, *, mailer_factory=SMTPMailer) -> int:
-    if not config.notifications.email_on_failure:
-        return 0
-    parts = urlsplit(run_url)
-    if parts.scheme != "https" or not parts.hostname or parts.username or parts.password:
-        raise ValueError("Failure notification requires a public HTTPS run URL")
-    addresses = recipients(config)
-    if not addresses:
-        raise ValueError("Failure notification requires EMAIL_TO")
-    now = datetime.now(ZoneInfo(config.timezone))
-    health = latest_health(config)
-    subject = config.email.subject_prefix + " · 运行异常"
-    text = (
-        "日报任务未完整完成，请查看 GitHub Actions 运行记录：\n" + run_url + "\n\n"
-        "状态：" + health.get("status", "unavailable") + "\n"
-        "原因：" + health.get("error", "工作流的准备或状态保存步骤失败") + "\n\n"
-        "部分缓存可能已保存。邮件可能已被服务器接受，请先检查收件箱及 pending 状态，"
-        "再决定是否重试；不要直接重复发送。\n"
-    )
-    import html
-
-    with mailer_factory(config) as mailer:
-        for address in addresses:
-            mailer.send(
-                build_message(
-                    config,
-                    address,
-                    "failure-" + uuid.uuid4().hex,
-                    subject,
-                    text,
-                    "<pre>" + html.escape(text) + "</pre>",
-                    now,
-                )
-            )
-    return len(addresses)
+    """Compatibility entry point: failure emails are disabled, including legacy configs."""
+    return 0

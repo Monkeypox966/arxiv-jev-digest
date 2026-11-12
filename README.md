@@ -70,9 +70,8 @@ weight = 1.0
 
 进入 **Actions → Daily arXiv Digest → Run workflow**：
 
-1. 选择 `delivery_test`：只发送一封测试邮件，不调用模型，先确认邮箱配置可用。
-2. 选择 `preview`：真实抓取并调用模型，但不发邮件。完成后下载 **Artifacts** 中的报告，打开 `digest.html` 检查筛选与摘要效果。
-3. 选择 `send`：正常筛选并发送日报。`daily` 模式与自动任务相同，当天已发送的收件人会跳过。
+1. 选择 `preview`：真实抓取并调用模型，但不发邮件。完成后下载 **Artifacts** 中的报告，打开 `digest.html` 检查筛选与摘要效果。
+2. 选择 `send`：正常筛选并发送日报。`daily` 模式与自动任务相同，当天已发送的收件人会跳过。
 
 <br>
 
@@ -121,8 +120,8 @@ GitHub Actions 已传入上述三个 Secret；其他服务的密钥推荐保存�
 先查看 **Actions → 最近一次运行 → Summary**，确认是否触发、是否成功、筛选数量和发送数量：
 
 - **没有运行记录**：检查工作流是否启用、是否在默认分支；可手动运行 `send` 补跑。
-- **成功但发送为 0**：检查是否运行了 `preview` 或关闭了 `email.send_empty`；正常发送模式默认也会发送空日报。
-- **运行失败**：查看错误和 `health.json`；核对 API 余额、Secrets、SMTP 授权码。
+- **成功但发送为 0**：检查是否为 `preview`、公告未更新、当天已发送或无匹配论文。这些情况均不发信。
+- **运行失败**：查看错误和 `health.json`；核对 API 余额、Secrets、SMTP 授权码。失败通知及测试邮件已关闭，只有成功生成的有效论文日报才会发信。
 - **存在 pending**：先核查收件箱与垃圾箱，再按[恢复手册](docs/operations.md)确认，避免重复投递。
 
 发送历史、缓存和自动学习的机构名单保存在 `digest-state` 分支，需保留工作流的 `contents: write` 权限和状态分支。报告和恢复数据库保存在 Actions Artifacts。

@@ -26,7 +26,7 @@ The default schedule dispatches once per hour from **10:00 through 23:00 Beijing
 
 ## Delivery safety
 
-Actions restores its own delivery history and checks for an acknowledged daily delivery covering today's announcement. If already delivered, it skips before fetching; if `/new` is still dated before today, it skips before metadata API or model calls. Fresh batches without matches also send nothing. Empty digests are never sent. The server only guards active runs and recent dispatch intents against accidental duplicate requests; SMTP pending protection remains in Actions.
+Actions restores its own delivery history and checks for an acknowledged daily delivery covering today's announcement. If already delivered, it skips before fetching; if `/new` is still dated before today, it skips before metadata API or model calls. Fresh batches without matches also send nothing. Only successfully generated digests containing papers are emailed. Empty digests, failure alerts and test emails are disabled, including legacy configurations. Failures remain visible in Actions logs and health reports. The server only guards active runs and recent dispatch intents against accidental duplicate requests; SMTP pending protection remains in Actions.
 
 ```sh
 /opt/arxiv-digest-scheduler/status.sh

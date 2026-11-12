@@ -176,69 +176,18 @@ def test_status_without_previous_reports_is_explicit(config, monkeypatch):
     assert "No operation health report" in health["error"]
 
 
-class CapturingMailer:
-    def __init__(self, messages, *, fail_at=None):
-        self.messages, self.fail_at = messages, fail_at
-
-    def __enter__(self):
-        if self.fail_at == "login":
-            raise ServiceError("SMTP login failed")
-        return self
-
-    def send(self, message):
-        if self.fail_at == "send":
-            raise ServiceError("SMTP alert delivery uncertain")
-        self.messages.append(message)
-
-    def __exit__(self, *_args):
-        pass
-
-
-def test_failure_notification_disabled_needs_no_keys_or_mailer(config, monkeypatch):
+@pytest.mark.parametrize("legacy_enabled", [False, True])
+def test_failure_notification_never_sends_even_with_legacy_config(
+    config, monkeypatch, legacy_enabled
+):
     model_keys_removed(monkeypatch)
     for name in ("SMTP_USERNAME", "SMTP_PASSWORD", "EMAIL_FROM", "EMAIL_TO"):
         monkeypatch.delenv(name, raising=False)
-    config.notifications.email_on_failure = False
-    assert notify_failure(config, "not-even-a-url", mailer_factory=unexpected) == 0
-
-
-def test_failure_notification_uses_smtp_only_and_reaches_each_recipient(config, monkeypatch):
-    model_keys_removed(monkeypatch)
-    config.notifications.email_on_failure = True
-    monkeypatch.setenv("EMAIL_TO", "first@example.com,second@example.com")
+    config.notifications.email_on_failure = legacy_enabled
+    write_health(config, {"status": "failed", "error": "API budget exhausted"})
     monkeypatch.setattr("arxiv_digest.operations.DeepSeekClient", unexpected)
     monkeypatch.setattr("arxiv_digest.operations.fetch_by_ids", unexpected)
-    write_health(config, {"status": "failed", "error": "API budget exhausted"})
-    messages = []
-    count = notify_failure(config, RUN_URL, mailer_factory=lambda _: CapturingMailer(messages))
-    assert count == len(messages) == 2
-    assert [str(message["To"]) for message in messages] == [
-        "first@example.com",
-        "second@example.com",
-    ]
-    for message in messages:
-        text = message.get_body(preferencelist=("plain",)).get_content()
-        assert RUN_URL in text and "API budget exhausted" in text
-        assert "运行异常" in str(message["Subject"])
-        assert "fake-smtp" not in text
-        assert message["Bcc"] is None
-
-
-@pytest.mark.parametrize("stage", ["login", "send"])
-def test_failure_notification_smtp_failure_is_visible(config, monkeypatch, stage):
-    model_keys_removed(monkeypatch)
-    config.notifications.email_on_failure = True
-    with pytest.raises(ServiceError, match="SMTP"):
-        notify_failure(config, RUN_URL, mailer_factory=lambda _: CapturingMailer([], fail_at=stage))
-
-
-@pytest.mark.parametrize(
-    "run_url", ["http://github.com/run", "javascript:alert(1)", "https://u:p@github.com/run"]
-)
-def test_failure_notification_rejects_non_https_or_credential_url(config, run_url):
-    config.notifications.email_on_failure = True
-    with pytest.raises(ValueError, match="public HTTPS"):
-        notify_failure(config, run_url, mailer_factory=unexpected)
+    assert notify_failure(config, RUN_URL, mailer_factory=unexpected) == 0
 
 
 @pytest.mark.parametrize("missing", ["script", "token"])
@@ -302,3 +251,11 @@ def test_outbox_persistence_calls_trusted_helper_before_delivery(tmp_path, monke
             {"cwd": tmp_path, "capture_output": True, "timeout": 60, "check": False},
         )
     ]
+
+
+def test_workflow_only_exposes_paper_delivery_modes():
+    workflow = (Path(__file__).parents[1] / ".github/workflows/daily.yml").read_text("utf-8")
+    assert "notify-failure" not in workflow
+    assert "test-email" not in workflow
+    assert "delivery_test" not in workflow
+    assert "arxiv-digest run --persist-outbox --daily-after 10:00" in workflow

@@ -166,7 +166,7 @@ class BudgetSettings(Settings):
 
 
 class NotificationSettings(Settings):
-    email_on_failure: bool = False
+    email_on_failure: bool = False  # Legacy option retained for loading old configs; ignored.
 
 
 class InstitutionRule(Settings):

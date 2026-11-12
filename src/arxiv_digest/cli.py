@@ -81,16 +81,12 @@ def main(argv=None) -> int:
     )
     inspect.add_argument("paper_ids", nargs="+")
     inspect.add_argument("--refresh", action="store_true", help="Bypass metadata cache")
-    delivery_test = sub.add_parser(
-        "test-email", help="Explicit SMTP test; no models or paper-history changes"
-    )
+    delivery_test = sub.add_parser("test-email", help="Legacy command; test emails are disabled")
     delivery_test.add_argument("--persist-outbox", action="store_true")
     sub.add_parser(
         "status", help="Show latest health and API usage; write Actions summary if available"
     )
-    notify = sub.add_parser(
-        "notify-failure", help="Send optional failure alert; no model API calls"
-    )
+    notify = sub.add_parser("notify-failure", help="Legacy command; failure emails are disabled")
     notify.add_argument("--run-url", required=True)
     sub.add_parser(
         "reset-checkpoints",

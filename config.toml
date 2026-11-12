@@ -143,5 +143,5 @@ max_input_tokens = 2000000
 max_output_tokens = 300000
 
 [notifications]
-# Scheduled/send failures can notify the configured recipients; previews never send mail.
-email_on_failure = true
+# Legacy option; failures are recorded in Actions logs and never emailed.
+email_on_failure = false

@@ -11,7 +11,7 @@ on:
       mode:
         description: Preview never emails; daily checks today's delivery; send forces a normal run.
         type: choice
-        options: [preview, daily, send, inspect, institutions, delivery_test, recover_preview, recover_send, reset_checkpoints, resolve_sent, resolve_retry]
+        options: [preview, daily, send, inspect, institutions, recover_preview, recover_send, reset_checkpoints, resolve_sent, resolve_retry]
         default: preview
       scheduler_id:
         description: Optional external scheduler correlation ID; does not change delivery mode.
@@ -93,7 +93,6 @@ jobs:
                 uv run --locked --no-dev arxiv-digest run --persist-outbox
               fi
               ;;
-            delivery_test) uv run --locked --no-dev arxiv-digest test-email --persist-outbox ;;
             recover_preview) uv run --locked --no-dev arxiv-digest run --dry-run --recovery-days "$RECOVERY_DAYS" ;;
             recover_send) uv run --locked --no-dev arxiv-digest run --persist-outbox --recovery-days "$RECOVERY_DAYS" ;;
             reset_checkpoints) uv run --locked --no-dev arxiv-digest reset-checkpoints ;;
@@ -131,12 +130,3 @@ jobs:
       - name: Publish run health and API usage
         if: ${{ always() && steps.restore.outcome == 'success' }}
         run: uv run --locked --no-dev arxiv-digest status
-      - name: Notify configured recipients after a send-mode failure
-        if: ${{ failure() && (github.event_name == 'schedule' || inputs.mode == 'daily' || inputs.mode == 'send' || inputs.mode == 'recover_send') }}
-        env:
-          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: uv run --locked --no-dev arxiv-digest notify-failure --run-url "$RUN_URL"

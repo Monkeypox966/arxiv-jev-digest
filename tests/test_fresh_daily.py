@@ -56,6 +56,13 @@ def test_old_batch_waits_without_api_models_smtp_or_delivery_history(subscriptio
 def test_late_update_after_legacy_empty_mail_sends_once_then_skips_before_fetch(
     subscription, summary, monkeypatch
 ):
+    # SMTP acknowledgement must use the same clock as the injected pipeline date.
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return NOW.astimezone(tz)
+
+    monkeypatch.setattr("arxiv_digest.store.datetime", FixedDateTime)
     phase, calls, messages = ["2026-10-28"], [], []
     with Store(subscription.state_dir) as store:
         old = store.prepare(
