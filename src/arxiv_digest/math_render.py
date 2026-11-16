@@ -37,14 +37,16 @@ def formula_image(
     return png, width, min(baseline, 0), height
 
 
-def math_html(text: str, size: int = 15, color: str = "#243832") -> Markup:
+def math_html(text: str, size: int = 15, color: str = "#000000") -> Markup:
     """Escape prose and replace each complete formula with a self-contained PNG."""
     pieces = []
     position = 0
     for match in MATH.finditer(text):
         pieces.append(escape(text[position : match.start()]))
         expression = next(value for value in match.groupdict().values() if value is not None)
-        display = match.group("display") is not None or match.group("bracket") is not None
+        display = any(
+            match.group(name) is not None for name in ("display", "bracket", "environment")
+        )
         try:
             png, width, baseline, height = formula_image(expression, display, size, color)
             encoded = base64.b64encode(png).decode("ascii")

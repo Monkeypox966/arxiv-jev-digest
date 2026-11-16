@@ -23,6 +23,7 @@ from arxiv_digest.math_render import formula_image, math_html
         r"\begin{bmatrix}1&2\\3&4\end{bmatrix}",
         r"\begin{cases}x^2&x>0\\-x&x\leq 0\end{cases}",
         r"\begin{aligned}a&=b+c\\d&=e-f\end{aligned}",
+        r"\begin{equation*}\operatorname{Proj}(\mathcal{A},\mathcal{A}^{+})\end{equation*}",
     ],
 )
 def test_math_is_typeset_into_a_real_retina_png(expression):
@@ -68,3 +69,16 @@ def test_display_math_and_offline_html_preserve_formula_alt_text():
     assert images[1]["alt"] == r"\[\frac{a}{b}\]"
     assert "display:block" in images[1]["style"]
     assert base64.b64decode(images[0]["src"].split(",")[1]).startswith(b"\x89PNG")
+
+
+def test_arxiv_bare_equation_environment_is_rendered_with_surrounding_text():
+    html = str(
+        math_html(
+            r"定义\begin{equation*}((\mathcal{A},\mathcal{A}_{\textrm{gr}}),"
+            r"\mathcal{A}^{+}),\end{equation*}捕获稠密分次子环的直观含义。"
+        )
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    assert soup.get_text() == "定义捕获稠密分次子环的直观含义。"
+    assert len(soup.find_all("img")) == 1
+    assert "display:block" in soup.img["style"]

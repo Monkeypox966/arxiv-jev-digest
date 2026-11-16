@@ -14,7 +14,9 @@ MATH = re.compile(
     r"(?<!\\)\$\$(?P<display>.+?)(?<!\\)\$\$"
     r"|(?<!\\)\\\[(?P<bracket>.+?)(?<!\\)\\\]"
     r"|(?<!\\)\\\((?P<paren>.+?)(?<!\\)\\\)"
-    r"|(?<![\\$])\$(?![\s$])(?P<inline>[^\n]*?\S)(?<!\\)\$(?!\$)",
+    r"|(?<![\\$])\$(?![\s$])(?P<inline>[^\n]*?\S)(?<!\\)\$(?!\$)"
+    r"|(?P<environment>(?<!\\)\\begin\{(?P<environment_name>"
+    r"equation\*?|align\*?|gather\*?|displaymath)\}.*?\\end\{(?P=environment_name)\})",
     re.DOTALL,
 )
 

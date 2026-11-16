@@ -113,7 +113,7 @@ GitHub Actions passes all three Secret names above; use `DECISION_API_KEY` for a
 
 <br>
 
-LaTeX formulas in titles and translations are typeset locally into high-resolution PNGs and embedded in the email. Fractions, scripts, sums, integrals and matrices are supported, with no model-token cost. Plain-text email uses readable text; unsupported formulas remain verbatim.
+Emails use a white background with black text, a light-only color scheme and dark-mode overrides. LaTeX formulas in titles and translations are typeset locally into high-resolution PNGs and embedded in the email. Fractions, scripts, sums, integrals and matrices are supported, with no model-token cost. Plain-text email uses readable text; unsupported formulas remain verbatim.
 
 ## Missing an email?
 
