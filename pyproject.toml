@@ -12,7 +12,7 @@ dependencies = [
   "jinja2>=3.1.6,<4",
   "pydantic>=2.11,<3",
   "python-dotenv>=1.1,<2",
-  "pypdf>=6,<7",
+  "pypdf>=6,<8",
   "tzdata>=2025.2",
   "fonttools>=4,<5",
 ]
