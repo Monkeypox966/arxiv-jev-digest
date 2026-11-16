@@ -7,16 +7,12 @@ from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 from .config import Config
-from .math_render import math_html
-from .math_text import math_text
 from .models import Pick
 
 ENV = Environment(
     loader=PackageLoader("arxiv_digest", "templates"),
     autoescape=select_autoescape(["html", "xml"]),
 )
-ENV.filters["math_text"] = math_text
-ENV.filters["math_html"] = math_html
 
 ANNOUNCEMENT_LABELS = {"new": "新提交", "cross": "跨分类", "replace": "修订论文"}
 
@@ -91,17 +87,17 @@ def render(config: Config, picks: list[Pick], now: datetime, stats: dict, *, dem
             continue
         index += 1
         lines += [
-            f"{index}. {math_text(pick.summary.title_zh)}",
-            math_text(pick.paper.title),
+            f"{index}. {pick.summary.title_zh}",
+            pick.paper.title,
             "",
-            math_text(pick.summary.tldr),
+            pick.summary.tldr,
         ]
         if not config.compact_summaries:
             lines += [
-                f"问题：{math_text(pick.summary.problem)}",
-                f"方法：{math_text(pick.summary.method)}",
-                f"结果：{math_text(pick.summary.results)}",
-                f"阅读提醒：{math_text(pick.summary.limitations)}",
+                f"问题：{pick.summary.problem}",
+                f"方法：{pick.summary.method}",
+                f"结果：{pick.summary.results}",
+                f"阅读提醒：{pick.summary.limitations}",
             ]
         lines += [
             "",

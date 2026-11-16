@@ -83,8 +83,6 @@ class Summary(BaseModel):
     @field_validator("*", mode="before")
     @classmethod
     def strip_text(cls, value):
-        if isinstance(value, str) and any(ord(c) < 32 and c not in "\n\r\t" for c in value):
-            raise ValueError("Invalid control character in translation")
         return value.strip() if isinstance(value, str) else value
 
 
