@@ -124,7 +124,7 @@ def test_summary_fatal_auth_does_not_retry(config, paper):
 def test_summary_cache_invalidates_on_language_or_content(config, paper, monkeypatch):
     key = summary_key(config, paper)
     with monkeypatch.context() as previous:
-        previous.setattr("arxiv_digest.clients.SUMMARY_PROMPT_VERSION", 5)
+        previous.setattr("arxiv_digest.clients.SUMMARY_PROMPT_VERSION", 6)
         assert summary_key(config, paper) != key
     config.deepseek.language = "English"
     assert summary_key(config, paper) != key
@@ -136,6 +136,7 @@ def test_summary_cache_invalidates_on_language_or_content(config, paper, monkeyp
         ({"method": ["step one"]}, "method", "string_type"),
         ({"limitations": None}, "limitations", "string_type"),
         ({"tldr": " "}, "tldr", "string_too_short"),
+        ({"tldr": "公式 $\x00mathcal{A}$"}, "tldr", "value_error"),
     ],
 )
 def test_summary_retry_explains_schema_failure_without_changing_source(
