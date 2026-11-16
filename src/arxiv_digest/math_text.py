@@ -6,6 +6,8 @@ import re
 
 from pylatexenc.latex2text import LatexNodes2Text, MacroTextSpec, get_default_latex_context_db
 from pylatexenc.latexwalker import LatexMacroNode, LatexWalker, LatexWalkerParseError
+from pylatexenc.latexwalker import get_default_latex_context_db as get_parser_context
+from pylatexenc.macrospec import MacroSpec
 
 # Match complete math spans only. Ordinary prose, URLs and escaped dollars stay intact.
 MATH = re.compile(
@@ -38,6 +40,12 @@ def math_text(text: str) -> str:
         keep_braced_groups=True,
         keep_braced_groups_minlen=0,
     )
+    parser_context = get_parser_context()
+    parser_context.add_context_category(
+        "email-fractions",
+        macros=[MacroSpec(name, "{{") for name in ("frac", "dfrac", "tfrac")],
+        prepend=True,
+    )
 
     def supported(nodes):
         for node in nodes:
@@ -63,7 +71,9 @@ def math_text(text: str) -> str:
     def replace(match):
         expression = next(value for value in match.groupdict().values() if value is not None)
         try:
-            nodes, _, _ = LatexWalker(expression, tolerant_parsing=False).get_latex_nodes()
+            nodes, _, _ = LatexWalker(
+                expression, latex_context=parser_context, tolerant_parsing=False
+            ).get_latex_nodes()
             if supported(nodes):
                 return converter.nodelist_to_text(nodes)
         except (LatexWalkerParseError, ValueError, IndexError, RecursionError):
