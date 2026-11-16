@@ -7,6 +7,7 @@ from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 from .config import Config
+from .math_render import math_html
 from .math_text import math_text
 from .models import Pick
 
@@ -15,6 +16,7 @@ ENV = Environment(
     autoescape=select_autoescape(["html", "xml"]),
 )
 ENV.filters["math_text"] = math_text
+ENV.filters["math_html"] = math_html
 
 ANNOUNCEMENT_LABELS = {"new": "新提交", "cross": "跨分类", "replace": "修订论文"}
 

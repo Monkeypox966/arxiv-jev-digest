@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import base64
 import logging
+import re
 import smtplib
 import ssl
 from email.message import EmailMessage
 from email.utils import format_datetime, formataddr
+from hashlib import sha256
 
 from .config import Config, email_address, require_env
 from .http import ServiceError
 
 LOG = logging.getLogger(__name__)
+FORMULA_IMAGE = re.compile(r'src="data:image/png;base64,([A-Za-z0-9+/=]+)"')
 
 
 def persist_safe_cleanup(outbox_hook):
@@ -59,7 +63,21 @@ def build_message(
     message["Date"] = format_datetime(now)
     message["Message-ID"] = f"<{delivery_id}@{sender.split('@')[1]}>"
     message.set_content(text)
+    images = {}
+
+    def related_image(match):
+        data = base64.b64decode(match.group(1), validate=True)
+        cid = sha256(data).hexdigest() + "@arxiv-digest.math"
+        images[cid] = data
+        return f'src="cid:{cid}"'
+
+    html = FORMULA_IMAGE.sub(related_image, html)
     message.add_alternative(html, subtype="html")
+    html_part = message.get_body(preferencelist=("html",))
+    for cid, data in images.items():
+        html_part.add_related(
+            data, maintype="image", subtype="png", cid=f"<{cid}>", disposition="inline"
+        )
     return message
 
 

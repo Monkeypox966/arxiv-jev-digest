@@ -48,11 +48,11 @@ def test_nablamimic_titles_and_abstract_render_from_cached_latex_without_changin
         summary,
     )
     _, text, html = write_report(tmp_path, config, [pick], datetime.now(UTC), {"fetched": 1})
-    for rendered in (text, html):
-        assert "∇Mimic: Ultra-Efficient" in rendered
-        assert "∇Mimic：基于可微模拟" in rendered
-        assert "∇Mimic 的伴随计算快 11.5×。" in rendered
-        assert r"\nabla" not in rendered
+    assert "∇Mimic: Ultra-Efficient" in text
+    assert "∇Mimic：基于可微模拟" in text
+    assert "∇Mimic 的伴随计算快 11.5×。" in text
+    assert r"\nabla" not in text
+    assert html.count('src="data:image/png;base64,') == 4
     assert "<script>" not in html and "&lt;script&gt;" in html
     record = json.loads((tmp_path / "digest.json").read_text("utf-8"))
     assert record["papers"][0]["paper"]["title"] == paper.title
