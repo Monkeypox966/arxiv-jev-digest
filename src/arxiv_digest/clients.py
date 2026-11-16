@@ -240,7 +240,7 @@ class DeepSeekClient:
             "Use title_zh for the translated title in any output language. "
             "Chinese robotics terminology for the title and all other fields: in robot "
             "motion, tracking and control contexts, translate compliant and compliance "
-            "(including the misspelling compliace) as 柔顺, never 合规. "
+            "as 柔顺, never 合规. "
             "Return only a JSON object with exactly these nonempty string fields: "
             + json.dumps(example, ensure_ascii=False)
         )
