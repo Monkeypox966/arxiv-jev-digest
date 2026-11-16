@@ -113,6 +113,8 @@ GitHub Actions passes all three Secret names above; use `DECISION_API_KEY` for a
 
 <br>
 
+Common LaTeX math symbols in titles and translations are converted to email-compatible text, such as `∇Mimic` and `11.5×`. Fractions use parenthesized text; unsupported expressions remain verbatim.
+
 ## Missing an email?
 
 Check **Actions → latest run → Summary** for its trigger, outcome, selection count and delivery count:

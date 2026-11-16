@@ -15,6 +15,7 @@ dependencies = [
   "pypdf>=6,<7",
   "tzdata>=2025.2",
   "fonttools>=4,<5",
+  "pylatexenc>=2.10,<3",
 ]
 
 [project.scripts]
