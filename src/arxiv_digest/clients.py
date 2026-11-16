@@ -15,7 +15,7 @@ from .http import RateLimiter, ServiceError, request, retry_delay
 from .models import Decision, Paper, Summary
 from .usage import UsageTracker, input_reservation
 
-SUMMARY_PROMPT_VERSION = 5
+SUMMARY_PROMPT_VERSION = 6
 LOG = logging.getLogger(__name__)
 
 
@@ -238,6 +238,9 @@ class DeepSeekClient:
             "stating when that auxiliary information is not reported. They must not replace "
             "or shorten the full translation in tldr. Do not invent results, numbers or links. "
             "Use title_zh for the translated title in any output language. "
+            "Chinese robotics terminology for the title and all other fields: in robot "
+            "motion, tracking and control contexts, translate compliant and compliance "
+            "(including the misspelling compliace) as 柔顺, never 合规. "
             "Return only a JSON object with exactly these nonempty string fields: "
             + json.dumps(example, ensure_ascii=False)
         )

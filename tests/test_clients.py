@@ -124,7 +124,7 @@ def test_summary_fatal_auth_does_not_retry(config, paper):
 def test_summary_cache_invalidates_on_language_or_content(config, paper, monkeypatch):
     key = summary_key(config, paper)
     with monkeypatch.context() as previous:
-        previous.setattr("arxiv_digest.clients.SUMMARY_PROMPT_VERSION", 4)
+        previous.setattr("arxiv_digest.clients.SUMMARY_PROMPT_VERSION", 5)
         assert summary_key(config, paper) != key
     config.deepseek.language = "English"
     assert summary_key(config, paper) != key
