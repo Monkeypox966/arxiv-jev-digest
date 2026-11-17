@@ -44,6 +44,29 @@
       ]
     },
     {
+      "institution": "College of Computing, Georgia Inst. of Technology, Atlanta, GA, USA",
+      "canonical_name": "Georgia Institute of Technology",
+      "score": 0.8,
+      "status": "rule",
+      "confidence": 1.0,
+      "reason": "机构登记归一化后命中人工偏好名单。",
+      "sources": [
+        "https://ror.org/01zkghx44"
+      ],
+      "identity_sources": [
+        "https://ror.org/01zkghx44"
+      ],
+      "identity_evidence": [],
+      "evidence": [],
+      "assessed_on": "2026-11-17T17:00:19.091441+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "college of computing, georgia inst. of technology, atlanta, ga, usa",
+        "georgia institute of technology"
+      ]
+    },
+    {
       "institution": "hessian.AI",
       "canonical_name": "Hessian Center for Artificial Intelligence",
       "score": 0.8,
