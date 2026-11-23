@@ -307,6 +307,43 @@
       ]
     },
     {
+      "institution": "Albert School of Construction, William States Lee College of Engineering, University of North Carolina at Charlotte",
+      "canonical_name": "University of North Carolina at Charlotte",
+      "score": 0.8,
+      "status": "assessed",
+      "confidence": 0.8,
+      "reason": "R1 Carnegie classification with documented research enterprise ($94.9M expenditures, $282.3M grant portfolio), and the William States Lee College of Engineering is documented as advancing autonomous systems, which is related robotics research strength. Evidence is substantial but not exceptional-level for the specific cs.RO category.",
+      "sources": [
+        "https://www.charlotte.edu/research/",
+        "https://inside.charlotte.edu/2025/02/13/unc-charlotte-awarded-r1-carnegie-classification-the-highest-recognition-for-research-universities/"
+      ],
+      "identity_sources": [
+        "https://ror.org/04dawnj30"
+      ],
+      "identity_evidence": [],
+      "evidence": [
+        {
+          "source": "https://www.charlotte.edu/research/",
+          "quote": "From pioneering sustainable infrastructure to advancing autonomous systems, the William States Lee College of Engineering is at the forefront of technological and industrial breakthroughs."
+        },
+        {
+          "source": "https://www.charlotte.edu/research/",
+          "quote": "$94.9M Research Expenditures (2024-2025) $282.3M Total grant portfolio (2024-2025) Top 10 Nationally for new patents and startups per research dollar"
+        },
+        {
+          "source": "https://inside.charlotte.edu/2025/02/13/unc-charlotte-awarded-r1-carnegie-classification-the-highest-recognition-for-research-universities/",
+          "quote": "The University of North Carolina at Charlotte has been awarded esteemed Research 1 – or R1 – status by the Carnegie Classification of Institutions of Higher Education. It is the highest recognition that a doctoral university can receive."
+        }
+      ],
+      "assessed_on": "2026-11-23T16:00:17.953028+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "albert school of construction, william states lee college of engineering, university of north carolina at charlotte",
+        "university of north carolina at charlotte"
+      ]
+    },
+    {
       "institution": "ZJU",
       "canonical_name": "Zhejiang University",
       "score": 1.0,
