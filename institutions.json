@@ -189,6 +189,30 @@
       ]
     },
     {
+      "institution": "Istituto Italiano di Tecnologia (IIT)",
+      "canonical_name": "Italian Institute of Technology",
+      "score": 0.8,
+      "status": "rule",
+      "confidence": 1.0,
+      "reason": "机构登记归一化后命中人工偏好名单。",
+      "sources": [
+        "https://ror.org/042t93s57"
+      ],
+      "identity_sources": [
+        "https://ror.org/042t93s57"
+      ],
+      "identity_evidence": [],
+      "evidence": [],
+      "assessed_on": "2026-11-24T18:00:28.568055+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "humanoids and human-centered mechatronics research line, istituto italiano di tecnologia (iit)",
+        "istituto italiano di tecnologia (iit)",
+        "italian institute of technology"
+      ]
+    },
+    {
       "institution": "Robotics and Artificial Intelligence Lab, Korea Advanced Institute of Science & Technology (KAIST)",
       "canonical_name": "KAIST",
       "score": 1.0,
@@ -304,6 +328,42 @@
       "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
       "aliases": [
         "shanghai innovation institute"
+      ]
+    },
+    {
+      "institution": "Technology Innovation Institute",
+      "canonical_name": "Technology Innovation Institute",
+      "score": 0.8,
+      "status": "assessed",
+      "confidence": 0.8,
+      "reason": "TII documents a dedicated Autonomous Robotics Research Center with a named international team and explicit research areas in perception, control, decision-making, swarm coordination, and bio-inspired systems, plus an advisory board of prominent robotics scholars. This constitutes substantial concrete robotics research strength, though only a single category-specific page evidences it.",
+      "sources": [
+        "https://www.tii.ae/autonomous-robotics",
+        "https://www.tii.ae"
+      ],
+      "identity_sources": [
+        "https://ror.org/001kv2y39"
+      ],
+      "identity_evidence": [],
+      "evidence": [
+        {
+          "source": "https://www.tii.ae/autonomous-robotics",
+          "quote": "The Autonomous Robotics Research Center (ARRC) is leading the advancement of robotics, computer vision, and bio-inspired technologies in the region. Our international team of experts from top-tier academic institutions and research organizations specialize in perception, communication, control and decision making, bio-inspiration, and modular and self-organized autonomous systems."
+        },
+        {
+          "source": "https://www.tii.ae/autonomous-robotics",
+          "quote": "We research, develop, and apply novel technologies to innovate robotics solutions that are fully independent of human intervention and human infrastructure, while still being able to interact with humans and other biological systems in the environment."
+        },
+        {
+          "source": "https://www.tii.ae",
+          "quote": "9 Research Centers, 100+ International Collaborations & 70 Patents in process."
+        }
+      ],
+      "assessed_on": "2026-11-24T18:00:28.568055+08:00",
+      "deferred": false,
+      "scope": "20c0059f795bde66da3fbd4efb7e4735d9db29ee410406007b1d8a8e2fbe24d5",
+      "aliases": [
+        "technology innovation institute"
       ]
     },
     {
